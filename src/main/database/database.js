@@ -132,23 +132,53 @@ class DatabaseService {
                 )
             `);
 
-            // Tabla libros
+            // Tabla libros - Estructura basada en estándares MARC para bibliotecas
             this.db.exec(`
                 CREATE TABLE IF NOT EXISTS libros (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    
+                    -- Identificadores únicos
+                    controlNumber TEXT UNIQUE NOT NULL,
+                    controlAgency TEXT,
+                    
+                    -- Información básica del libro
                     titulo TEXT NOT NULL,
-                    autor TEXT NOT NULL,
+                    mainAuthor TEXT NOT NULL,
+                    coAuthors TEXT,
+                    edition TEXT,
+                    
+                    -- Publicación
+                    publisher TEXT NOT NULL,
+                    publicationYear INTEGER NOT NULL,
+                    publicationPlace TEXT,
+                    
+                    -- Identificadores internacionales
                     isbn TEXT UNIQUE,
-                    categoria TEXT,
-                    editorial TEXT,
-                    anioPublicacion INTEGER,
+                    
+                    -- Clasificación y temas
+                    universalDecimalClassification TEXT,
+                    subject TEXT,
+                    series TEXT,
+                    
+                    -- Descripción física
+                    pageCount INTEGER,
+                    dimensions TEXT,
+                    physicalDescription TEXT,
+                    
+                    -- Metadatos del sistema
+                    cataloguingLanguage TEXT,
+                    generalNote TEXT,
+                    
+                    -- Control de copias (del sistema anterior)
                     cantidad INTEGER DEFAULT 1,
                     disponibles INTEGER DEFAULT 1,
-                    ubicacion TEXT,
                     estado TEXT DEFAULT 'disponible',
-                    descripcion TEXT,
+                    
+                    -- Metadatos del sistema
                     bibliotecaId INTEGER,
                     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    lastModificationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    
                     FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
                 )
             `);
@@ -191,12 +221,14 @@ class DatabaseService {
             this.db.exec(`
                 -- Índices para libros
                 CREATE INDEX IF NOT EXISTS idx_libros_titulo ON libros(titulo);
-                CREATE INDEX IF NOT EXISTS idx_libros_autor ON libros(autor);
-                CREATE INDEX IF NOT EXISTS idx_libros_categoria ON libros(categoria);
+                CREATE INDEX IF NOT EXISTS idx_libros_mainAuthor ON libros(mainAuthor);
+                CREATE INDEX IF NOT EXISTS idx_libros_subject ON libros(subject);
                 CREATE INDEX IF NOT EXISTS idx_libros_biblioteca ON libros(bibliotecaId);
                 CREATE INDEX IF NOT EXISTS idx_libros_isbn ON libros(isbn);
+                CREATE INDEX IF NOT EXISTS idx_libros_controlNumber ON libros(controlNumber);
                 CREATE INDEX IF NOT EXISTS idx_libros_estado ON libros(estado);
                 CREATE INDEX IF NOT EXISTS idx_libros_disponibles ON libros(disponibles);
+                CREATE INDEX IF NOT EXISTS idx_libros_cdu ON libros(universalDecimalClassification);
                 
                 -- Índices para socios
                 CREATE INDEX IF NOT EXISTS idx_socios_nombre ON socios(nombre);
@@ -490,78 +522,118 @@ class DatabaseService {
     async createLibro(libroData) {
         try {
             // VALIDACIONES
-            Validators.validateRequired(libroData.titulo, 'titulo'); // Valida que el titulo no esté vacío
-            Validators.validateRequired(libroData.autor, 'autor'); // lo mismo el autor
-            Validators.validateRequired(libroData.bibliotecaId, 'bibliotecaId'); // se asegura de que se asigne a una biblioteca
+            Validators.validateRequired(libroData.controlNumber, 'controlNumber'); // Número de control único
+            Validators.validateRequired(libroData.titulo, 'titulo');
+            Validators.validateRequired(libroData.mainAuthor, 'mainAuthor');
+            Validators.validateRequired(libroData.publisher, 'publisher');
+            Validators.validateRequired(libroData.publicationYear, 'publicationYear');
+            Validators.validateRequired(libroData.bibliotecaId, 'bibliotecaId');
 
-            if (libroData.isbn && !Validators.validateISBN(libroData.isbn)) { //para que la sentencia derecha de true, el valid tiene que ser false(no cumple el formato)
+            if (libroData.isbn && !Validators.validateISBN(libroData.isbn)) {
                 throw new Error('El ISBN proporcionado no es válido (debe ser ISBN-10 o ISBN-13)');
             }
 
-            if (libroData.anioPublicacion && !Validators.validateYear(libroData.anioPublicacion)) { //lo mismo
+            if (libroData.publicationYear && !Validators.validateYear(libroData.publicationYear)) {
                 throw new Error('El año de publicación no es válido');
             }
 
             Validators.validatePositiveNumber(libroData.cantidad, 'cantidad');
             Validators.validatePositiveNumber(libroData.disponibles, 'disponibles');
+            Validators.validatePositiveNumber(libroData.pageCount, 'pageCount');
 
             // Verificar que la biblioteca existe
-            const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId); //Una query que se fija en la table bibliotecas si existe una con ese id (el que luego ocupara el lugar del "?" en la query)
+            const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId);
             if (!biblioteca) {
                 throw new Error('La biblioteca especificada no existe');
             }
 
+            // Verificar que el controlNumber sea único dentro de la biblioteca (combinación controlNumber + bibliotecaId)
+            const existingBook = this.db.prepare(
+                'SELECT id FROM libros WHERE controlNumber = ? AND bibliotecaId = ?'
+            ).get(libroData.controlNumber, libroData.bibliotecaId);
+            
+            if (existingBook) {
+                throw new Error(`Ya existe un libro con el número de control "${libroData.controlNumber}" en esta biblioteca`);
+            }
+
             const stmt = this.db.prepare(`
-                INSERT INTO libros (titulo, autor, isbn, categoria, editorial, anioPublicacion, cantidad, disponibles, ubicacion, estado, descripcion, bibliotecaId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO libros (
+                    controlNumber, controlAgency, titulo, mainAuthor, coAuthors, edition,
+                    publisher, publicationYear, publicationPlace, isbn,
+                    universalDecimalClassification, subject, series,
+                    pageCount, dimensions, physicalDescription,
+                    cataloguingLanguage, generalNote,
+                    cantidad, disponibles, estado, bibliotecaId
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            //Devuelve un objeto statement, que se guarda en stmt. Luego se ejecuta con los datos del libro  
-            //Con el prepare lo que hace es preparar la sentencia SQL para su ejecución posterior con los valores proporcionados.
+
             const result = stmt.run(
+                libroData.controlNumber,
+                libroData.controlAgency || null,
                 libroData.titulo,
-                libroData.autor,
+                libroData.mainAuthor,
+                libroData.coAuthors || null,
+                libroData.edition || null,
+                libroData.publisher,
+                libroData.publicationYear,
+                libroData.publicationPlace || null,
                 libroData.isbn || null,
-                libroData.categoria || null,
-                libroData.editorial || null,
-                libroData.anioPublicacion || null,
+                libroData.universalDecimalClassification || null,
+                libroData.subject || null,
+                libroData.series || null,
+                libroData.pageCount || null,
+                libroData.dimensions || null,
+                libroData.physicalDescription || null,
+                libroData.cataloguingLanguage || null,
+                libroData.generalNote || null,
                 libroData.cantidad || 1,
                 libroData.disponibles || libroData.cantidad || 1,
-                libroData.ubicacion || null,
                 libroData.estado || 'disponible',
-                libroData.descripcion || null,
                 libroData.bibliotecaId
             );
 
-            return this.getLibroById(result.lastInsertRowid); // usa la funcion getLibroById que es una funcion que ejecutauna query select para devolver el libro recien creado
+            return this.getLibroById(result.lastInsertRowid);
         } catch (error) {
             console.error('Error al crear libro:', error);
             throw error;
         }
     }
 
-    async getLibros(bibliotecaId, filters = {}) { //filter es un objeto con posibles filtros de busqueda
+    async getLibros(bibliotecaId, filters = {}) {
         try {
             // OPTIMIZACIÓN: Usar índices y LIMIT para paginación
             let query = 'SELECT * FROM libros WHERE bibliotecaId = ?';
             const params = [bibliotecaId];
 
-            if (filters.search) { //si escribio algo en el campo de busqueda "nombre" lo toma como thruty y entra, si puso 0 o nada no
-                query += ' AND (titulo LIKE ? OR autor LIKE ? OR isbn LIKE ?)';
-                const searchTerm = `%${filters.search}%`; //agrega % antes y despues del termino de busqueda para que busque coincidencias en cualquier parte del texto (como hacemos en sql server)
-                params.push(searchTerm, searchTerm, searchTerm);
+            if (filters.search) {
+                // Buscar en campos principales: título, autor principal y materia
+                query += ' AND (titulo LIKE ? OR mainAuthor LIKE ? OR subject LIKE ? OR isbn LIKE ? OR controlNumber LIKE ?)';
+                const searchTerm = `%${filters.search}%`;
+                params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
             }
 
-            if (filters.categoria) {
-                query += ' AND categoria = ?';
-                params.push(filters.categoria); //agrega el valor del filtro a los parametros de la query
+            if (filters.subject) {
+                query += ' AND subject = ?';
+                params.push(filters.subject);
+            }
+
+            if (filters.cdu) {
+                query += ' AND universalDecimalClassification = ?';
+                params.push(filters.cdu);
             }
 
             if (filters.estado) {
                 query += ' AND estado = ?';
-                params.push(filters.estado); // lo mismo
+                params.push(filters.estado);
             }
 
-            query += ' ORDER BY titulo ASC'; // agrupa de forma ascendente alfabeticamente
+            if (filters.publisher) {
+                query += ' AND publisher = ?';
+                params.push(filters.publisher);
+            }
+
+            query += ' ORDER BY titulo ASC';
 
             // Agregar LIMIT para paginación si se especifica
             if (filters.limit) {
@@ -574,7 +646,7 @@ class DatabaseService {
                 }
             }
 
-            const stmt = this.db.prepare(query); //ahora si deja la query lista y abajo le pasa el array de parametros
+            const stmt = this.db.prepare(query);
             return stmt.all(...params);
         } catch (error) {
             console.error('Error al obtener libros:', error);
@@ -1148,24 +1220,29 @@ class DatabaseService {
         }
     }
 
-    async getLibrosPorCategoria(bibliotecaId) {
+    async getLibrosPorMateria(bibliotecaId) {
         try {
-            // OPTIMIZACIÓN: Usar índice en categoria y bibliotecaId
+            // OPTIMIZACIÓN: Usar índice en subject y bibliotecaId
             const stmt = this.db.prepare(`
                 SELECT 
-                    COALESCE(categoria, 'Sin categoría') as categoria, 
+                    COALESCE(subject, 'Sin materia especificada') as materia, 
                     COUNT(*) as cantidad
                 FROM libros 
                 WHERE bibliotecaId = ? 
-                GROUP BY categoria
+                GROUP BY subject
                 ORDER BY cantidad DESC
             `);
 
             return stmt.all(bibliotecaId);
         } catch (error) {
-            console.error('Error al obtener libros por categoría:', error);
+            console.error('Error al obtener libros por materia:', error);
             throw error;
         }
+    }
+
+    // Función de compatibilidad con nombre antiguo
+    async getLibrosPorCategoria(bibliotecaId) {
+        return this.getLibrosPorMateria(bibliotecaId);
     }
 
     async getSociosPorMes(bibliotecaId, meses = 6) {
@@ -1225,50 +1302,85 @@ class DatabaseService {
 
     async insertSampleData(bibliotecaId) {
         try {
-            // Insertar libros de ejemplo
-            const librosEjemplo = [{
+            // Insertar libros de ejemplo con la nueva estructura (formato MARC)
+            const librosEjemplo = [
+                {
+                    controlNumber: 'LIB-001',
+                    controlAgency: 'AR-LpUBP',
                     titulo: 'El Señor de los Anillos',
-                    autor: 'J.R.R. Tolkien',
+                    mainAuthor: 'Tolkien, J.R.R.',
+                    coAuthors: null,
+                    edition: '1ª ed.',
+                    publisher: 'Minotauro',
+                    publicationYear: 1954,
+                    publicationPlace: 'Barcelona',
                     isbn: '978-84-450-7054-9',
-                    categoria: 'Fantasía',
-                    editorial: 'Minotauro',
-                    anioPublicacion: 1954,
+                    universalDecimalClassification: '820',
+                    subject: 'Fantasía',
+                    series: 'The Lord of the Rings',
+                    pageCount: 1178,
+                    dimensions: '22 cm',
+                    physicalDescription: 'Tapa dura, ilustraciones',
+                    cataloguingLanguage: 'spa',
+                    generalNote: 'Traducción al español',
                     cantidad: 3,
                     disponibles: 3,
-                    ubicacion: 'Estante A-1',
-                    descripcion: 'Trilogía épica de fantasía',
+                    estado: 'disponible',
                     bibliotecaId
                 },
                 {
+                    controlNumber: 'LIB-002',
+                    controlAgency: 'AR-LpUBP',
                     titulo: 'Cien años de soledad',
-                    autor: 'Gabriel García Márquez',
+                    mainAuthor: 'García Márquez, Gabriel',
+                    coAuthors: null,
+                    edition: '1ª ed.',
+                    publisher: 'Editorial Sudamericana',
+                    publicationYear: 1967,
+                    publicationPlace: 'Buenos Aires',
                     isbn: '978-84-397-2071-7',
-                    categoria: 'Literatura',
-                    editorial: 'Editorial Sudamericana',
-                    anioPublicacion: 1967,
+                    universalDecimalClassification: '860',
+                    subject: 'Novela latinoamericana',
+                    series: null,
+                    pageCount: 417,
+                    dimensions: '21 cm',
+                    physicalDescription: 'Tapa blanda',
+                    cataloguingLanguage: 'spa',
+                    generalNote: 'Obra maestra del realismo mágico',
                     cantidad: 2,
                     disponibles: 2,
-                    ubicacion: 'Estante B-3',
-                    descripcion: 'Obra maestra del realismo mágico',
+                    estado: 'disponible',
                     bibliotecaId
                 },
                 {
+                    controlNumber: 'LIB-003',
+                    controlAgency: 'AR-LpUBP',
                     titulo: '1984',
-                    autor: 'George Orwell',
+                    mainAuthor: 'Orwell, George',
+                    coAuthors: null,
+                    edition: '1ª ed.',
+                    publisher: 'Debolsillo',
+                    publicationYear: 1949,
+                    publicationPlace: 'Reino Unido',
                     isbn: '978-84-206-0000-0',
-                    categoria: 'Ciencia Ficción',
-                    editorial: 'Debolsillo',
-                    anioPublicacion: 1949,
+                    universalDecimalClassification: '827',
+                    subject: 'Ciencia ficción distópica',
+                    series: null,
+                    pageCount: 328,
+                    dimensions: '21 cm',
+                    physicalDescription: 'Tapa blanda',
+                    cataloguingLanguage: 'spa',
+                    generalNote: 'Traducción al español',
                     cantidad: 4,
                     disponibles: 4,
-                    ubicacion: 'Estante C-2',
-                    descripcion: 'Distopía clásica',
+                    estado: 'disponible',
                     bibliotecaId
                 }
             ];
 
-            // Insertar socios de ejemplo
-            const sociosEjemplo = [{
+            // Insertar socios de ejemplo (sin cambios)
+            const sociosEjemplo = [
+                {
                     nombre: 'María González',
                     email: 'maria@email.com',
                     telefono: '123-456-789',
@@ -1318,28 +1430,28 @@ class DatabaseService {
 
     async insertUTNSampleData(bibliotecaId) {
         try {
-            console.log('Creando datos de muestra para UTN-FRLP...');
+            console.log('Creando datos de muestra para UTN-FRLP (Formato MARC)...');
 
-            // Libros de muestra más extensos
+            // Libros de muestra con estructura MARC
             const librosUTN = [
-                { titulo: 'Introducción a la Programación', autor: 'Dr. Carlos Martínez', isbn: '978-1234567890', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 5, disponibles: 3, ubicacion: 'Estante A-1', descripcion: 'Fundamentos de programación', bibliotecaId },
-                { titulo: 'Estructuras de Datos', autor: 'Prof. Laura Fernández', isbn: '978-1234567891', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2021, cantidad: 4, disponibles: 2, ubicacion: 'Estante A-2', descripcion: 'Algoritmos y estructuras', bibliotecaId },
-                { titulo: 'Base de Datos', autor: 'Ing. Roberto Sánchez', isbn: '978-1234567892', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2022, cantidad: 6, disponibles: 4, ubicacion: 'Estante A-3', descripcion: 'SQL y diseño de BD', bibliotecaId },
-                { titulo: 'Matemática Discreta', autor: 'Dr. Ana García', isbn: '978-1234567893', categoria: 'Matemática', editorial: 'UTN Press', anioPublicacion: 2019, cantidad: 3, disponibles: 1, ubicacion: 'Estante B-1', descripcion: 'Lógica y teoría de grafos', bibliotecaId },
-                { titulo: 'Álgebra Lineal', autor: 'Prof. Miguel Torres', isbn: '978-1234567894', categoria: 'Matemática', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 4, disponibles: 2, ubicacion: 'Estante B-2', descripcion: 'Vectores y matrices', bibliotecaId },
-                { titulo: 'Cálculo Diferencial', autor: 'Dr. Patricia López', isbn: '978-1234567895', categoria: 'Matemática', editorial: 'UTN Press', anioPublicacion: 2021, cantidad: 5, disponibles: 3, ubicacion: 'Estante B-3', descripcion: 'Límites y derivadas', bibliotecaId },
-                { titulo: 'Física I', autor: 'Ing. Daniel Ruiz', isbn: '978-1234567896', categoria: 'Física', editorial: 'UTN Press', anioPublicacion: 2019, cantidad: 4, disponibles: 2, ubicacion: 'Estante C-1', descripcion: 'Mecánica clásica', bibliotecaId },
-                { titulo: 'Física II', autor: 'Prof. Carmen Díaz', isbn: '978-1234567897', categoria: 'Física', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 3, disponibles: 1, ubicacion: 'Estante C-2', descripcion: 'Electricidad y magnetismo', bibliotecaId },
-                { titulo: 'Redes de Computadoras', autor: 'Ing. Fernando Morales', isbn: '978-1234567898', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2022, cantidad: 5, disponibles: 3, ubicacion: 'Estante A-4', descripcion: 'Protocolos y arquitecturas', bibliotecaId },
-                { titulo: 'Ingeniería de Software', autor: 'Dr. Silvia Ramírez', isbn: '978-1234567899', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2021, cantidad: 4, disponibles: 2, ubicacion: 'Estante A-5', descripcion: 'Metodologías ágiles', bibliotecaId },
-                { titulo: 'Inteligencia Artificial', autor: 'Prof. Luis Herrera', isbn: '978-1234567900', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2023, cantidad: 3, disponibles: 1, ubicacion: 'Estante A-6', descripcion: 'Machine Learning básico', bibliotecaId },
-                { titulo: 'Química General', autor: 'Dr. María González', isbn: '978-1234567901', categoria: 'Química', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 4, disponibles: 2, ubicacion: 'Estante D-1', descripcion: 'Fundamentos químicos', bibliotecaId },
-                { titulo: 'Diseño Gráfico', autor: 'Prof. Jorge Castro', isbn: '978-1234567902', categoria: 'Diseño', editorial: 'UTN Press', anioPublicacion: 2021, cantidad: 3, disponibles: 1, ubicacion: 'Estante E-1', descripcion: 'Principios de diseño', bibliotecaId },
-                { titulo: 'Marketing Digital', autor: 'Ing. Andrea Silva', isbn: '978-1234567903', categoria: 'Marketing', editorial: 'UTN Press', anioPublicacion: 2022, cantidad: 5, disponibles: 3, ubicacion: 'Estante F-1', descripcion: 'Estrategias digitales', bibliotecaId },
-                { titulo: 'Gestión de Proyectos', autor: 'Dr. Ricardo Vargas', isbn: '978-1234567904', categoria: 'Administración', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 4, disponibles: 2, ubicacion: 'Estante G-1', descripcion: 'PMI y Scrum', bibliotecaId }
+                { controlNumber: 'UTN-2020-001', controlAgency: 'AR-UTN-FRLP', titulo: 'Introducción a la Programación', mainAuthor: 'Martínez, Carlos', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2020, publicationPlace: 'La Plata', isbn: '978-1234567890', universalDecimalClassification: '005.1', subject: 'Programación', series: 'Fundamentos de Informática', pageCount: 320, dimensions: '21 cm', physicalDescription: 'Tapa blanda, ilustraciones', cataloguingLanguage: 'spa', generalNote: 'Con ejemplos prácticos', cantidad: 5, disponibles: 3, bibliotecaId },
+                { controlNumber: 'UTN-2021-001', controlAgency: 'AR-UTN-FRLP', titulo: 'Estructuras de Datos', mainAuthor: 'Fernández, Laura', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2021, publicationPlace: 'La Plata', isbn: '978-1234567891', universalDecimalClassification: '005.73', subject: 'Algoritmos y estructuras', series: null, pageCount: 280, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: 'Enfoque didáctico', cantidad: 4, disponibles: 2, bibliotecaId },
+                { controlNumber: 'UTN-2022-001', controlAgency: 'AR-UTN-FRLP', titulo: 'Base de Datos', mainAuthor: 'Sánchez, Roberto', edition: '2ª ed.', publisher: 'UTN Press', publicationYear: 2022, publicationPlace: 'La Plata', isbn: '978-1234567892', universalDecimalClassification: '005.74', subject: 'Bases de datos', series: 'Informática Aplicada', pageCount: 410, dimensions: '22 cm', physicalDescription: 'Tapa dura, diagramas', cataloguingLanguage: 'spa', generalNote: 'Incluye SQL avanzado', cantidad: 6, disponibles: 4, bibliotecaId },
+                { controlNumber: 'UTN-2019-001', controlAgency: 'AR-UTN-FRLP', titulo: 'Matemática Discreta', mainAuthor: 'García, Ana', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2019, publicationPlace: 'La Plata', isbn: '978-1234567893', universalDecimalClassification: '511.3', subject: 'Matemática discreta', series: 'Matemáticas', pageCount: 390, dimensions: '21 cm', physicalDescription: 'Tapa blanda, gráficos', cataloguingLanguage: 'spa', generalNote: 'Teoría de grafos incluida', cantidad: 3, disponibles: 1, bibliotecaId },
+                { controlNumber: 'UTN-2020-002', controlAgency: 'AR-UTN-FRLP', titulo: 'Álgebra Lineal', mainAuthor: 'Torres, Miguel', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2020, publicationPlace: 'La Plata', isbn: '978-1234567894', universalDecimalClassification: '512.5', subject: 'Álgebra', series: 'Matemáticas', pageCount: 350, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: null, cantidad: 4, disponibles: 2, bibliotecaId },
+                { controlNumber: 'UTN-2021-002', controlAgency: 'AR-UTN-FRLP', titulo: 'Cálculo Diferencial', mainAuthor: 'López, Patricia', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2021, publicationPlace: 'La Plata', isbn: '978-1234567895', universalDecimalClassification: '517.2', subject: 'Cálculo', series: 'Matemáticas', pageCount: 420, dimensions: '21 cm', physicalDescription: 'Tapa blanda, gráficos', cataloguingLanguage: 'spa', generalNote: 'Problemas resueltos', cantidad: 5, disponibles: 3, bibliotecaId },
+                { controlNumber: 'UTN-2019-002', controlAgency: 'AR-UTN-FRLP', titulo: 'Física I', mainAuthor: 'Ruiz, Daniel', edition: '3ª ed.', publisher: 'UTN Press', publicationYear: 2019, publicationPlace: 'La Plata', isbn: '978-1234567896', universalDecimalClassification: '531', subject: 'Física - Mecánica', series: 'Ciencias Básicas', pageCount: 480, dimensions: '22 cm', physicalDescription: 'Tapa dura, ilustraciones', cataloguingLanguage: 'spa', generalNote: 'Experimentos de laboratorio', cantidad: 4, disponibles: 2, bibliotecaId },
+                { controlNumber: 'UTN-2020-003', controlAgency: 'AR-UTN-FRLP', titulo: 'Física II', mainAuthor: 'Díaz, Carmen', edition: '2ª ed.', publisher: 'UTN Press', publicationYear: 2020, publicationPlace: 'La Plata', isbn: '978-1234567897', universalDecimalClassification: '537', subject: 'Física - Electricidad', series: 'Ciencias Básicas', pageCount: 450, dimensions: '22 cm', physicalDescription: 'Tapa dura', cataloguingLanguage: 'spa', generalNote: null, cantidad: 3, disponibles: 1, bibliotecaId },
+                { controlNumber: 'UTN-2022-002', controlAgency: 'AR-UTN-FRLP', titulo: 'Redes de Computadoras', mainAuthor: 'Morales, Fernando', edition: '2ª ed.', publisher: 'UTN Press', publicationYear: 2022, publicationPlace: 'La Plata', isbn: '978-1234567898', universalDecimalClassification: '004.65', subject: 'Redes', series: 'Informática Aplicada', pageCount: 380, dimensions: '21 cm', physicalDescription: 'Tapa blanda, diagramas', cataloguingLanguage: 'spa', generalNote: 'Protocolos TCP/IP', cantidad: 5, disponibles: 3, bibliotecaId },
+                { controlNumber: 'UTN-2021-003', controlAgency: 'AR-UTN-FRLP', titulo: 'Ingeniería de Software', mainAuthor: 'Ramírez, Silvia', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2021, publicationPlace: 'La Plata', isbn: '978-1234567899', universalDecimalClassification: '005.1', subject: 'Ingeniería de software', series: 'Informática Avanzada', pageCount: 400, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: 'Metodologías ágiles', cantidad: 4, disponibles: 2, bibliotecaId },
+                { controlNumber: 'UTN-2023-001', controlAgency: 'AR-UTN-FRLP', titulo: 'Inteligencia Artificial', mainAuthor: 'Herrera, Luis', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2023, publicationPlace: 'La Plata', isbn: '978-1234567900', universalDecimalClassification: '006.3', subject: 'Inteligencia artificial', series: 'Informática Avanzada', pageCount: 360, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: 'Machine Learning básico', cantidad: 3, disponibles: 1, bibliotecaId },
+                { controlNumber: 'UTN-2020-004', controlAgency: 'AR-UTN-FRLP', titulo: 'Química General', mainAuthor: 'González, María', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2020, publicationPlace: 'La Plata', isbn: '978-1234567901', universalDecimalClassification: '540', subject: 'Química', series: 'Ciencias Básicas', pageCount: 420, dimensions: '22 cm', physicalDescription: 'Tapa dura, tablas', cataloguingLanguage: 'spa', generalNote: 'Prácticas de laboratorio', cantidad: 4, disponibles: 2, bibliotecaId },
+                { controlNumber: 'UTN-2021-004', controlAgency: 'AR-UTN-FRLP', titulo: 'Diseño Gráfico', mainAuthor: 'Castro, Jorge', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2021, publicationPlace: 'La Plata', isbn: '978-1234567902', universalDecimalClassification: '741.6', subject: 'Diseño', series: null, pageCount: 300, dimensions: '25 cm', physicalDescription: 'Tapa blanda, a color', cataloguingLanguage: 'spa', generalNote: 'Abundantes ilustraciones', cantidad: 3, disponibles: 1, bibliotecaId },
+                { controlNumber: 'UTN-2022-003', controlAgency: 'AR-UTN-FRLP', titulo: 'Marketing Digital', mainAuthor: 'Silva, Andrea', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2022, publicationPlace: 'La Plata', isbn: '978-1234567903', universalDecimalClassification: '658.84', subject: 'Marketing digital', series: null, pageCount: 280, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: 'Estrategias digitales actuales', cantidad: 5, disponibles: 3, bibliotecaId },
+                { controlNumber: 'UTN-2020-005', controlAgency: 'AR-UTN-FRLP', titulo: 'Gestión de Proyectos', mainAuthor: 'Vargas, Ricardo', edition: '1ª ed.', publisher: 'UTN Press', publicationYear: 2020, publicationPlace: 'La Plata', isbn: '978-1234567904', universalDecimalClassification: '658.4', subject: 'Gestión de proyectos', series: 'Administración', pageCount: 350, dimensions: '21 cm', physicalDescription: 'Tapa blanda', cataloguingLanguage: 'spa', generalNote: 'PMI y metodología ágil', cantidad: 4, disponibles: 2, bibliotecaId }
             ];
 
-            // Socios de muestra
+            // Socios de muestra (sin cambios, pero con nota)
             const sociosUTN = [
                 { nombre: 'Juan Pérez', email: 'juan.perez@utn.frlp.edu.ar', telefono: '221-4567890', direccion: 'Calle 60 1234', observaciones: 'Estudiante de Ingeniería en Sistemas', bibliotecaId },
                 { nombre: 'María González', email: 'maria.gonzalez@utn.frlp.edu.ar', telefono: '221-4567891', direccion: 'Av. 7 567', observaciones: 'Estudiante de Ingeniería Industrial', bibliotecaId },
@@ -1358,7 +1470,7 @@ class DatabaseService {
                 { nombre: 'Jorge Silva', email: 'jorge.silva@utn.frlp.edu.ar', telefono: '221-4567904', direccion: 'Calle 52 890', observaciones: 'Estudiante de Ingeniería Química', bibliotecaId }
             ];
 
-            console.log('Insertando libros...');
+            console.log('Insertando libros en formato MARC...');
             const librosInsertados = [];
             for (const libro of librosUTN) {
                 try {
@@ -1440,11 +1552,11 @@ class DatabaseService {
                 }
             }
 
-            console.log('Datos de muestra creados exitosamente');
+            console.log('Datos de muestra MARC creados exitosamente');
 
             return {
                 success: true,
-                message: 'Datos de muestra UTN-FRLP insertados correctamente',
+                message: 'Datos de muestra UTN-FRLP (Formato MARC) insertados correctamente',
                 librosInsertados: librosInsertados.length,
                 sociosInsertados: sociosInsertados.length,
                 prestamosInsertados: prestamosInsertados.length
