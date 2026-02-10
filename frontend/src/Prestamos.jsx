@@ -61,6 +61,7 @@ export default function Prestamos() {
           const sociosReales = await window.electronAPI.getSocios(library.id, {});
           const sociosFormateados = sociosReales.map(socio => ({
             id: socio.numeroDeSocio ?? socio.id,
+            numeroDeSocio: socio.numeroDeSocio ?? socio.id,
             nombre: socio.nombre,
             email: socio.email || '',
             telefono: socio.telefono || '',
@@ -170,7 +171,7 @@ export default function Prestamos() {
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(socio.nombre || '');
+    setSocioSearch(`Nº ${socio.numeroDeSocio ?? socio.id} - ${socio.nombre || ''}`);
     setShowSocioResults(false);
     setFormData(prev => ({ ...prev, socioId: socio.id }));
   };
@@ -188,10 +189,11 @@ export default function Prestamos() {
   const filteredSocios = socios.filter(socio => {
     if (!socio.activo) return false;
 
-    const search = (socioSearch || '').toLowerCase();
+    const search = (socioSearch || '').toLowerCase().trim();
+    const numeroStr = String(socio.numeroDeSocio ?? socio.id ?? '');
     const nombre = (socio.nombre || '').toLowerCase();
 
-    return nombre.includes(search);
+    return numeroStr.includes(search) || nombre.includes(search);
   });
 
   // Manejo del formulario
@@ -523,7 +525,7 @@ export default function Prestamos() {
                     <input
                       type="text"
                       id="socioId"
-                      placeholder="Buscar socio..."
+                      placeholder="Buscar por número o nombre de socio..."
                       value={socioSearch}
                       onChange={handleSocioSearch}
                       onFocus={() => setShowSocioResults(socioSearch.length > 0)}
@@ -538,7 +540,10 @@ export default function Prestamos() {
                             onClick={() => selectSocio(socio)}
                           >
                             <User size={16} />
-                            <span>{socio.nombre}</span>
+                            <div>
+                              <strong>Nº {socio.numeroDeSocio ?? socio.id}</strong>
+                              <span> — {socio.nombre}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
