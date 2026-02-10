@@ -186,7 +186,7 @@ class DatabaseService {
             // Tabla socios
             this.db.exec(`
                 CREATE TABLE IF NOT EXISTS socios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    numeroDeSocio INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     telefono TEXT,
@@ -194,7 +194,7 @@ class DatabaseService {
                     fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
                     estado TEXT DEFAULT 'activo',
                     observaciones TEXT,
-                    bibliotecaId INTEGER,
+                    bibliotecaId INTEGER NOT NULL,
                     FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
                 )
             `);
@@ -302,59 +302,96 @@ class DatabaseService {
             const tableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='socios'").get();
 
             if (tableInfo) {
+                console.log('📋 Tabla socios encontrada, verificando estructura...');
                 // Obtener la estructura actual de la tabla
-                const pragmaInfo = this.db.prepare("PRAGMA table_info(socios)").all();
-                const emailColumn = pragmaInfo.find(col => col.name === 'email');
+                try {
+                    const pragmaInfo = this.db.prepare("PRAGMA table_info(socios)").all();
+                    console.log('📋 Estructura actual de socios:', pragmaInfo.map(c => c.name));
 
-                // Si la columna email existe pero no tiene restricción UNIQUE
-                if (emailColumn && !emailColumn.notnull) {
-                    console.log('Migrando tabla socios: agregando restricción UNIQUE al email...');
+                    const hasNumeroDeSocio = pragmaInfo.find(col => col.name === 'numeroDeSocio');
+                    const hasOldId = pragmaInfo.find(col => col.name === 'id');
 
-                    // Crear tabla temporal con la nueva estructura
-                    this.db.exec(`
-                        CREATE TABLE socios_new (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            nombre TEXT NOT NULL,
-                            email TEXT NOT NULL UNIQUE,
-                            telefono TEXT,
-                            direccion TEXT,
-                            fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            estado TEXT DEFAULT 'activo',
-                            observaciones TEXT,
-                            bibliotecaId INTEGER,
-                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
-                        )
-                    `);
+                    // Si tiene la vieja estructura (id) pero no la nueva (numeroDeSocio)
+                    if (hasOldId && !hasNumeroDeSocio) {
+                        console.log('⚠️ Migrando tabla socios: renombrando id a numeroDeSocio...');
 
-                    // Copiar datos existentes (eliminando duplicados si existen)
-                    this.db.exec(`
-                        INSERT INTO socios_new (id, nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId)
-                        SELECT id, nombre, 
-                               CASE WHEN email IS NULL OR email = '' THEN 'sin-email-' || id || '@temporal.com' ELSE email END,
-                               telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId
-                        FROM socios
-                        GROUP BY LOWER(TRIM(email))
-                    `);
+                        try {
+                            // Usando transaction para asegurar atomicidad
+                            this.db.exec('PRAGMA foreign_keys = OFF');
 
-                    // Eliminar tabla antigua
-                    this.db.exec('DROP TABLE socios');
+                            // Crear tabla temporal con la nueva estructura
+                            this.db.exec(`
+                                CREATE TABLE socios_new (
+                                    numeroDeSocio INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    nombre TEXT NOT NULL,
+                                    email TEXT NOT NULL UNIQUE,
+                                    telefono TEXT,
+                                    direccion TEXT,
+                                    fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                    estado TEXT DEFAULT 'activo',
+                                    observaciones TEXT,
+                                    bibliotecaId INTEGER NOT NULL,
+                                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                                )
+                            `);
 
-                    // Renombrar tabla nueva
-                    this.db.exec('ALTER TABLE socios_new RENAME TO socios');
+                            // Copiar datos existentes
+                            const countBefore = this.db.prepare('SELECT COUNT(*) as count FROM socios').get().count;
+                            console.log(`📊 Copiando ${countBefore} socios...`);
 
-                    // Recrear índices
-                    this.db.exec(`
-                        CREATE INDEX IF NOT EXISTS idx_socios_nombre ON socios(nombre);
-                        CREATE INDEX IF NOT EXISTS idx_socios_biblioteca ON socios(bibliotecaId);
-                        CREATE INDEX IF NOT EXISTS idx_socios_estado ON socios(estado);
-                        CREATE INDEX IF NOT EXISTS idx_socios_email ON socios(email);
-                    `);
+                            this.db.exec(`
+                                INSERT INTO socios_new (numeroDeSocio, nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId)
+                                SELECT id, nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, COALESCE(bibliotecaId, 1)
+                                FROM socios
+                            `);
 
-                    console.log('Migración completada: email ahora es único y requerido');
+                            const countAfter = this.db.prepare('SELECT COUNT(*) as count FROM socios_new').get().count;
+                            console.log(`✅ Copiados ${countAfter} socios`);
+
+                            // Eliminar tabla antigua
+                            this.db.exec('DROP TABLE socios');
+
+                            // Renombrar tabla nueva
+                            this.db.exec('ALTER TABLE socios_new RENAME TO socios');
+
+                            // Recrear índices
+                            this.db.exec(`
+                                CREATE INDEX IF NOT EXISTS idx_socios_nombre ON socios(nombre);
+                                CREATE INDEX IF NOT EXISTS idx_socios_biblioteca ON socios(bibliotecaId);
+                                CREATE INDEX IF NOT EXISTS idx_socios_estado ON socios(estado);
+                                CREATE INDEX IF NOT EXISTS idx_socios_email ON socios(email);
+                            `);
+
+                            this.db.exec('PRAGMA foreign_keys = ON');
+                            console.log('✅ Migración completada: tabla socios actualizada a numeroDeSocio');
+                        } catch (migrationError) {
+                            console.error('❌ Error durante migración de socios:', migrationError);
+                            console.log('🔄 Intentando fallback: eliminar y recrear tabla socios...');
+                            try {
+                                this.db.exec('PRAGMA foreign_keys = OFF');
+                                this.db.exec('DROP TABLE IF EXISTS socios_new');
+                                this.db.exec('DROP TABLE IF EXISTS socios');
+                                this.db.exec('PRAGMA foreign_keys = ON');
+                                console.log('✅ Tabla socios eliminada, se recreará con estructura correcta');
+                            } catch (fallbackError) {
+                                console.error('❌ Error en fallback:', fallbackError);
+                            }
+                        }
+                    } else if (hasNumeroDeSocio) {
+                        console.log('✅ Tabla socios ya tiene estructura correcta (numeroDeSocio)');
+                    }
+                } catch (checkError) {
+                    console.error('❌ Error al verificar estructura de socios:', checkError);
+                    console.log('🔄 Limpiando tabla socios corrupta...');
+                    try {
+                        this.db.exec('PRAGMA foreign_keys = OFF');
+                        this.db.exec('DROP TABLE IF EXISTS socios');
+                        this.db.exec('PRAGMA foreign_keys = ON');
+                        console.log('✅ Tabla socios eliminada, se recreará con estructura correcta');
+                    } catch (e) {}
                 }
             }
 
-            // Migrar tabla préstamos para cambiar CASCADE a SET NULL
             const prestamosTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='prestamos'").get();
 
             if (prestamosTableInfo) {
@@ -784,11 +821,13 @@ class DatabaseService {
 
             // Verificar si ya existe un socio con ese email (globalmente, no solo por biblioteca)
             const emailNormalizado = socioData.email.toLowerCase().trim();
-            const existingSocio = this.db.prepare('SELECT id, nombre FROM socios WHERE LOWER(TRIM(email)) = ?').get(emailNormalizado);
+            const existingSocio = this.db.prepare('SELECT numeroDeSocio, nombre FROM socios WHERE LOWER(TRIM(email)) = ?').get(emailNormalizado);
 
             if (existingSocio) {
                 throw new Error(`Ya existe un socio con el email "${socioData.email}". El email debe ser único.`);
             }
+
+            console.log('📝 Insertando socio:', socioData.nombre, 'con email:', emailNormalizado);
 
             const stmt = this.db.prepare(`
                 INSERT INTO socios (nombre, email, telefono, direccion, estado, observaciones, bibliotecaId)
@@ -797,7 +836,7 @@ class DatabaseService {
 
             const result = stmt.run(
                 socioData.nombre,
-                socioData.email,
+                emailNormalizado,
                 socioData.telefono || null,
                 socioData.direccion || null,
                 socioData.estado || 'activo',
@@ -805,15 +844,46 @@ class DatabaseService {
                 socioData.bibliotecaId
             );
 
-            return this.getSocioById(result.lastInsertRowid);
+            console.log('✅ INSERT exitoso. Changes:', result.changes, 'LastInsertRowId:', result.lastInsertRowid);
+
+            // Verificar INMEDIATAMENTE que el dato se guardó
+            const totalSocios = this.db.prepare('SELECT COUNT(*) as count FROM socios').get().count;
+            console.log(`📊 Total de socios en BD ahora: ${totalSocios}`);
+
+            const sociosEnBiblioteca = this.db.prepare('SELECT COUNT(*) as count FROM socios WHERE bibliotecaId = ?').get(socioData.bibliotecaId).count;
+            console.log(`📊 Socios en esta biblioteca (${socioData.bibliotecaId}) ahora: ${sociosEnBiblioteca}`);
+
+            // Recuperar el socio creado
+            const newSocio = this.db.prepare('SELECT * FROM socios WHERE numeroDeSocio = ?').get(result.lastInsertRowid);
+
+            if (!newSocio) {
+                console.error('❌ Socio no encontrado después de INSERT. ID buscado:', result.lastInsertRowid);
+                // Verificar qué hay en la tabla
+                const allSocios = this.db.prepare('SELECT numeroDeSocio, nombre, email FROM socios ORDER BY numeroDeSocio DESC LIMIT 5').all();
+                console.log('❌ Los últimos 5 socios en BD:', allSocios);
+                throw new Error('No se pudo recuperar el socio creado');
+            }
+
+            console.log('✅ Socio recuperado correctamente:', newSocio);
+            return newSocio;
         } catch (error) {
-            console.error('Error al crear socio:', error);
+            console.error('❌ Error al crear socio:', error);
             throw error;
         }
     }
 
     async getSocios(bibliotecaId, filters = {}) {
         try {
+            console.log(`📖 Obteniendo socios para bibliotecaId: ${bibliotecaId}`);
+
+            // DEBUG: Contar todos los socios globalmente
+            const totalCount = this.db.prepare('SELECT COUNT(*) as count FROM socios').get().count;
+            console.log(`📊 Total de socios en BD: ${totalCount}`);
+
+            // DEBUG: Contar socios para esta biblioteca específica
+            const libCount = this.db.prepare('SELECT COUNT(*) as count FROM socios WHERE bibliotecaId = ?').get(bibliotecaId).count;
+            console.log(`📊 Socios en biblioteca ${bibliotecaId}: ${libCount}`);
+
             // OPTIMIZACIÓN: Usar índices y LIMIT para paginación
             let query = 'SELECT * FROM socios WHERE bibliotecaId = ?';
             const params = [bibliotecaId];
@@ -829,7 +899,7 @@ class DatabaseService {
                 params.push(filters.estado);
             }
 
-            query += ' ORDER BY nombre ASC';
+            query += ' ORDER BY numeroDeSocio DESC';
 
             // Agregar LIMIT para paginación si se especifica
             if (filters.limit) {
@@ -843,7 +913,12 @@ class DatabaseService {
             }
 
             const stmt = this.db.prepare(query);
-            return stmt.all(...params);
+            const result = stmt.all(...params);
+            console.log(`✅ Se encontraron ${result.length} socios para el filtro actual`);
+            if (result.length > 0) {
+                console.log('📋 Primer socio:', result[0]);
+            }
+            return result;
         } catch (error) {
             console.error('Error al obtener socios:', error);
             throw error;
@@ -852,8 +927,10 @@ class DatabaseService {
 
     async getSocioById(id) {
         try {
-            const stmt = this.db.prepare('SELECT * FROM socios WHERE id = ?');
-            return stmt.get(id);
+            const stmt = this.db.prepare('SELECT * FROM socios WHERE numeroDeSocio = ?');
+            const result = stmt.get(id);
+            console.log('📖 getSocioById - Buscando socio con ID:', id, '- Resultado:', result);
+            return result;
         } catch (error) {
             console.error('Error al obtener socio:', error);
             throw error;
@@ -869,13 +946,18 @@ class DatabaseService {
                     throw new Error('El email proporcionado no es válido');
                 }
 
-                // Verificar que no exista otro socio con ese email
+                // Normalizar email
                 const emailNormalizado = updates.email.toLowerCase().trim();
-                const existingSocio = this.db.prepare('SELECT id FROM socios WHERE LOWER(TRIM(email)) = ? AND id != ?').get(emailNormalizado, id);
+
+                // Verificar que no exista otro socio con ese email
+                const existingSocio = this.db.prepare('SELECT numeroDeSocio FROM socios WHERE LOWER(TRIM(email)) = ? AND numeroDeSocio != ?').get(emailNormalizado, id);
 
                 if (existingSocio) {
                     throw new Error(`Ya existe un socio con el email "${updates.email}". El email debe ser único.`);
                 }
+
+                // Normalizar el email en updates también
+                updates.email = emailNormalizado;
             }
 
             const fields = [];
@@ -891,7 +973,7 @@ class DatabaseService {
             if (fields.length === 0) return false;
 
             values.push(id);
-            const stmt = this.db.prepare(`UPDATE socios SET ${fields.join(', ')} WHERE id = ?`);
+            const stmt = this.db.prepare(`UPDATE socios SET ${fields.join(', ')} WHERE numeroDeSocio = ?`);
             const result = stmt.run(...values);
 
             return result.changes > 0;
@@ -918,7 +1000,7 @@ class DatabaseService {
             console.log(`Actualizados ${updateResult.changes} préstamos`);
 
             // Ahora eliminar el socio
-            const stmt = this.db.prepare('DELETE FROM socios WHERE id = ?');
+            const stmt = this.db.prepare('DELETE FROM socios WHERE numeroDeSocio = ?');
             const result = stmt.run(id);
 
             return result.changes > 0;
@@ -999,12 +1081,12 @@ class DatabaseService {
             let query = `
                 SELECT p.*, 
                        COALESCE(l.titulo, '[Libro eliminado]') as libroTitulo, 
-                       COALESCE(l.autor, '') as libroAutor, 
+                       COALESCE(l.mainAuthor, '') as libroAutor, 
                        COALESCE(s.nombre, '[Socio eliminado]') as socioNombre, 
                        COALESCE(s.email, '') as socioEmail
                 FROM prestamos p
                 LEFT JOIN libros l ON p.libroId = l.id
-                LEFT JOIN socios s ON p.socioId = s.id
+                LEFT JOIN socios s ON p.socioId = s.numeroDeSocio
                 WHERE p.bibliotecaId = ?
             `;
             const params = [bibliotecaId];
@@ -1029,12 +1111,12 @@ class DatabaseService {
                 const stmt = this.db.prepare(`
                 SELECT p.*, 
                        COALESCE(l.titulo, '[Libro eliminado]') as libroTitulo, 
-                       COALESCE(l.autor, '') as libroAutor, 
+                       COALESCE(l.mainAuthor, '') as libroAutor, 
                        COALESCE(s.nombre, '[Socio eliminado]') as socioNombre, 
                        COALESCE(s.email, '') as socioEmail
                 FROM prestamos p
                 LEFT JOIN libros l ON p.libroId = l.id
-                LEFT JOIN socios s ON p.socioId = s.id
+                LEFT JOIN socios s ON p.socioId = s.numeroDeSocio
                 WHERE p.id = ?
             `);
                 return stmt.get(id);
@@ -1051,7 +1133,7 @@ class DatabaseService {
             const prestamo = this.db.prepare(`
                 SELECT p.*, 
                        COALESCE(l.titulo, '[Libro eliminado]') as libroTitulo, 
-                       COALESCE(l.autor, '') as libroAutor, 
+                       COALESCE(l.mainAuthor, '') as libroAutor, 
                        COALESCE(s.nombre, '[Socio eliminado]') as socioNombre, 
                        COALESCE(s.email, '') as socioEmail
                 FROM prestamos p

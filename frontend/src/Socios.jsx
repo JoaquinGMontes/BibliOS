@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, Filter, User, Mail, Phone, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Edit, Trash2,
-  ArrowUpDown, Users, FileText, Circle, Triangle, CheckCircle2, MapPin
+  ArrowUpDown, Users, FileText, Circle, Triangle, CheckCircle2, MapPin, Hash
 } from 'lucide-react';
 import './socios.css';
 import Navbar from './Navbar.jsx';
@@ -49,12 +49,13 @@ export default function Socios() {
           // Formatear los datos para el componente
           const sociosFormateados = sociosReales.map(socio => {
             // Calcular préstamos activos y totales para este socio
-            const prestamosSocio = prestamos.filter(p => p.socioId === socio.id);
+            const prestamosSocio = prestamos.filter(p => p.socioId === socio.numeroDeSocio);
             const prestamosActivos = prestamosSocio.filter(p => p.estado === 'activo').length;
             const prestamosTotales = prestamosSocio.length;
 
             return {
-              id: socio.id,
+              id: socio.numeroDeSocio,
+              numeroDeSocio: socio.numeroDeSocio,
               nombre: socio.nombre,
               email: socio.email || '',
               telefono: socio.telefono || '',
@@ -92,12 +93,13 @@ export default function Socios() {
           const prestamos = await window.electronAPI.getPrestamos(library.id, {});
 
           const sociosFormateados = sociosReales.map(socio => {
-            const prestamosSocio = prestamos.filter(p => p.socioId === socio.id);
+            const prestamosSocio = prestamos.filter(p => p.socioId === socio.numeroDeSocio);
             const prestamosActivos = prestamosSocio.filter(p => p.estado === 'activo').length;
             const prestamosTotales = prestamosSocio.length;
 
             return {
-              id: socio.id,
+              id: socio.numeroDeSocio,
+              numeroDeSocio: socio.numeroDeSocio,
               nombre: socio.nombre,
               email: socio.email || '',
               telefono: socio.telefono || '',
@@ -197,16 +199,30 @@ export default function Socios() {
           bibliotecaId: library.id
         };
 
-        console.log('Datos del socio a crear:', socioData);
+        console.log('📝 BibliotecaId en localStorage:', library.id);
+        console.log('📝 Datos del socio a crear:', socioData);
 
         const newSocio = await window.electronAPI.createSocio(socioData);
+        console.log('✅ Socio creado exitosamente. Respuesta del backend:', newSocio);
 
-        // Agregar a la lista local
-        setSocios([...socios, {
-          ...newSocio,
+        // Agregar a la lista local con formato correcto
+        const socioFormateado = {
+          id: newSocio.numeroDeSocio,
+          numeroDeSocio: newSocio.numeroDeSocio,
+          nombre: newSocio.nombre,
+          email: newSocio.email || '',
+          telefono: newSocio.telefono || '',
+          direccion: newSocio.direccion || '',
+          fechaRegistro: newSocio.fechaRegistro || new Date().toISOString().split('T')[0],
+          estado: newSocio.estado || 'activo',
           prestamosActivos: 0,
-          prestamosTotales: 0
-        }]);
+          prestamosTotales: 0,
+          observaciones: newSocio.observaciones || ''
+        };
+        
+        console.log('📊 Socio formateado para agregar al estado:', socioFormateado);
+        setSocios([...socios, socioFormateado]);
+        console.log('✅ Socio agr egado al estado local');
       } else {
         // Fallback local
         const newSocio = {
@@ -532,6 +548,7 @@ export default function Socios() {
             <table className="socios-table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Socio</th>
                   <th>Contacto</th>
                   <th>Fecha Registro</th>
@@ -544,6 +561,12 @@ export default function Socios() {
                 {filteredSocios.map(socio => {
                   return (
                     <tr key={socio.id}>
+                      <td>
+                        <div className="socio-number">
+                          <Hash size={14} />
+                          {socio.numeroDeSocio}
+                        </div>
+                      </td>
                       <td>
                         <div className="socio-info">
                           <User size={16} />
