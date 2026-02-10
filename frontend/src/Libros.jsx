@@ -44,6 +44,8 @@ export default function Libros() {
     physicalDescription: '',
     cataloguingLanguage: 'spa',
     generalNote: '',
+    cabecera: '',
+    fechaUltimaTransaccion: '',
     cantidad: '1',
     estado: 'disponible'
   });
@@ -217,6 +219,8 @@ export default function Libros() {
           physicalDescription: formData.physicalDescription || null,
           cataloguingLanguage: formData.cataloguingLanguage || 'spa',
           generalNote: formData.generalNote || null,
+          cabecera: formData.cabecera || null,
+          fechaUltimaTransaccion: formData.fechaUltimaTransaccion || null,
           cantidad: parseInt(formData.cantidad) || 1,
           estado: formData.estado || 'disponible',
           bibliotecaId: library.id
@@ -261,6 +265,8 @@ export default function Libros() {
         physicalDescription: '',
         cataloguingLanguage: 'spa',
         generalNote: '',
+        cabecera: '',
+        fechaUltimaTransaccion: '',
         cantidad: '1',
         estado: 'disponible'
       });
@@ -372,6 +378,8 @@ export default function Libros() {
           physicalDescription: editFormData.physicalDescription || null,
           cataloguingLanguage: editFormData.cataloguingLanguage || 'spa',
           generalNote: editFormData.generalNote || null,
+          cabecera: editFormData.cabecera || null,
+          fechaUltimaTransaccion: editFormData.fechaUltimaTransaccion || null,
           cantidad: parseInt(editFormData.cantidad) || 1,
           estado: editFormData.estado || 'disponible'
         });
@@ -731,6 +739,31 @@ export default function Libros() {
                     onChange={handleInputChange}
                     placeholder="Ej: Traducción al español; apéndices p. 955-1042"
                     rows="2"
+                  />
+                </div>
+              </div>
+
+              {/* FILA 9: Cabecera y Fecha última transacción */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="cabecera">Cabecera</label>
+                  <input
+                    type="text"
+                    id="cabecera"
+                    name="cabecera"
+                    value={formData.cabecera}
+                    onChange={handleInputChange}
+                    placeholder="Ej: Cabecera del libro"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="fechaUltimaTransaccion">Fecha y Hora Última Transacción</label>
+                  <input
+                    type="datetime-local"
+                    id="fechaUltimaTransaccion"
+                    name="fechaUltimaTransaccion"
+                    value={formData.fechaUltimaTransaccion}
+                    onChange={handleInputChange}
                   />
                 </div>
               </div>
@@ -1324,6 +1357,29 @@ export default function Libros() {
                         value={editFormData.generalNote}
                         onChange={handleEditInputChange}
                         rows="3"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="edit-cabecera">Cabecera</label>
+                      <input
+                        type="text"
+                        id="edit-cabecera"
+                        name="cabecera"
+                        value={editFormData.cabecera}
+                        onChange={handleEditInputChange}
+                        placeholder="Ej: Cabecera del libro"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="edit-fechaUltimaTransaccion">Fecha y Hora Última Transacción</label>
+                      <input
+                        type="datetime-local"
+                        id="edit-fechaUltimaTransaccion"
+                        name="fechaUltimaTransaccion"
+                        value={editFormData.fechaUltimaTransaccion}
+                        onChange={handleEditInputChange}
                       />
                     </div>
                   </div>
