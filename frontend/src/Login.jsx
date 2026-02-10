@@ -168,10 +168,14 @@ function Login() {
     try {
       if (window.electronAPI) {
         // Crear la biblioteca UTN-FRLP con datos de muestra
+        console.log('📖 CREANDO BIBLIOTECA UTN-FRLP...');
         const result = await window.electronAPI.createUTNLibrary();
+        console.log('✅ Resultado de createUTNLibrary:', result);
 
         // Obtener la biblioteca activa
+        console.log('🔍 Buscando biblioteca activa...');
         const bibliotecaActiva = await window.electronAPI.getBibliotecaActiva();
+        console.log('🏢 Biblioteca activa:', bibliotecaActiva);
 
         if (bibliotecaActiva) {
           // Guardar en localStorage

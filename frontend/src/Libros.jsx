@@ -41,13 +41,18 @@ export default function Libros() {
   useEffect(() => {
     const loadLibros = async () => {
       try {
+        console.log('📚 INICIANDO CARGA DE LIBROS...');
         // Obtener biblioteca activa
         const storedLibrary = localStorage.getItem('bibliotecaActiva');
+        console.log('📖 Biblioteca activa encontrada:', storedLibrary);
         if (storedLibrary && window.electronAPI) {
           const library = JSON.parse(storedLibrary);
+          console.log('🏢 Biblioteca ID:', library.id);
           
           // Cargar libros REALES de la biblioteca
+          console.log('🔄 Haciendo llamada a getLibros...');
           const librosReales = await window.electronAPI.getLibros(library.id, {});
+          console.log('✅ Libros cargados desde BD:', librosReales);
           
           // Formatear los datos para el componente
           const librosFormateados = librosReales.map(libro => ({
@@ -66,13 +71,15 @@ export default function Libros() {
             descripcion: libro.descripcion || ''
           }));
           
+          console.log('✅ Libros formateados:', librosFormateados.length, 'libros');
           setLibros(librosFormateados);
         } else {
+          console.warn('⚠️ No hay biblioteca activa o electronAPI no disponible');
           // Si no hay biblioteca activa, no mostrar libros
           setLibros([]);
         }
       } catch (error) {
-        console.error('Error al cargar libros:', error);
+        console.error('❌ Error al cargar libros:', error);
         setLibros([]);
       }
     };

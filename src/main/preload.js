@@ -1,155 +1,157 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+console.log('✅ PRELOAD.JS CARGADO - Exponiendo electronAPI');
+
 // Exponer APIs de base de datos al frontend
 contextBridge.exposeInMainWorld('electronAPI', {
     // ===== APIS DE BIBLIOTECAS =====
-    
+
     // Crear nueva biblioteca
-    createBiblioteca: (bibliotecaData) => 
+    createBiblioteca: (bibliotecaData) =>
         ipcRenderer.invoke('database:createBiblioteca', bibliotecaData),
-    
+
     // Obtener todas las bibliotecas
-    getBibliotecas: () => 
+    getBibliotecas: () =>
         ipcRenderer.invoke('database:getBibliotecas'),
-    
+
     // Obtener biblioteca por ID
-    getBibliotecaById: (id) => 
+    getBibliotecaById: (id) =>
         ipcRenderer.invoke('database:getBibliotecaById', id),
-    
+
     // Obtener biblioteca activa
-    getBibliotecaActiva: () => 
+    getBibliotecaActiva: () =>
         ipcRenderer.invoke('database:getBibliotecaActiva'),
-    
+
     // Actualizar biblioteca
-    updateBiblioteca: (id, updates) => 
+    updateBiblioteca: (id, updates) =>
         ipcRenderer.invoke('database:updateBiblioteca', { id, updates }),
-    
+
     // Eliminar biblioteca
-    deleteBiblioteca: (id) => 
+    deleteBiblioteca: (id) =>
         ipcRenderer.invoke('database:deleteBiblioteca', id),
-    
+
     // Activar biblioteca
-    activateBiblioteca: (id) => 
+    activateBiblioteca: (id) =>
         ipcRenderer.invoke('database:activateBiblioteca', id),
-    
+
     // Crear biblioteca UTN-FRLP con datos de muestra
-    createUTNLibrary: () => 
+    createUTNLibrary: () =>
         ipcRenderer.invoke('database:createUTNLibrary'),
 
     // ===== APIS DE LIBROS =====
-    
+
     // Crear nuevo libro
-    createLibro: (libroData) => 
+    createLibro: (libroData) =>
         ipcRenderer.invoke('database:createLibro', libroData),
-    
+
     // Obtener libros de una biblioteca
-    getLibros: (bibliotecaId, filters = {}) => 
+    getLibros: (bibliotecaId, filters = {}) =>
         ipcRenderer.invoke('database:getLibros', { bibliotecaId, filters }),
-    
+
     // Obtener libro por ID
-    getLibroById: (id) => 
+    getLibroById: (id) =>
         ipcRenderer.invoke('database:getLibroById', id),
-    
+
     // Actualizar libro
-    updateLibro: (id, updates) => 
+    updateLibro: (id, updates) =>
         ipcRenderer.invoke('database:updateLibro', { id, updates }),
-    
+
     // Eliminar libro
-    deleteLibro: (id) => 
+    deleteLibro: (id) =>
         ipcRenderer.invoke('database:deleteLibro', id),
 
     // ===== APIS DE SOCIOS =====
-    
+
     // Crear nuevo socio
-    createSocio: (socioData) => 
+    createSocio: (socioData) =>
         ipcRenderer.invoke('database:createSocio', socioData),
-    
+
     // Obtener socios de una biblioteca
-    getSocios: (bibliotecaId, filters = {}) => 
+    getSocios: (bibliotecaId, filters = {}) =>
         ipcRenderer.invoke('database:getSocios', { bibliotecaId, filters }),
-    
+
     // Obtener socio por ID
-    getSocioById: (id) => 
+    getSocioById: (id) =>
         ipcRenderer.invoke('database:getSocioById', id),
-    
+
     // Actualizar socio
-    updateSocio: (id, updates) => 
+    updateSocio: (id, updates) =>
         ipcRenderer.invoke('database:updateSocio', { id, updates }),
-    
+
     // Eliminar socio
-    deleteSocio: (id) => 
+    deleteSocio: (id) =>
         ipcRenderer.invoke('database:deleteSocio', id),
 
     // ===== APIS DE PRÉSTAMOS =====
-    
+
     // Crear nuevo préstamo
-    createPrestamo: (prestamoData) => 
+    createPrestamo: (prestamoData) =>
         ipcRenderer.invoke('database:createPrestamo', prestamoData),
-    
+
     // Obtener préstamos de una biblioteca
-    getPrestamos: (bibliotecaId, filters = {}) => 
+    getPrestamos: (bibliotecaId, filters = {}) =>
         ipcRenderer.invoke('database:getPrestamos', { bibliotecaId, filters }),
-    
+
     // Obtener préstamo por ID
-    getPrestamoById: (id) => 
+    getPrestamoById: (id) =>
         ipcRenderer.invoke('database:getPrestamoById', id),
-    
+
     // Devolver libro (marcar préstamo como completado)
-    devolverLibro: (prestamoId) => 
+    devolverLibro: (prestamoId) =>
         ipcRenderer.invoke('database:devolverLibro', prestamoId),
 
     // Actualizar préstamo
-    updatePrestamo: (id, updates) => 
+    updatePrestamo: (id, updates) =>
         ipcRenderer.invoke('database:updatePrestamo', { id, updates }),
 
     // Eliminar préstamo
-    deletePrestamo: (id) => 
+    deletePrestamo: (id) =>
         ipcRenderer.invoke('database:deletePrestamo', id),
 
     // ===== APIS DE ESTADÍSTICAS =====
-    
+
     // Obtener estadísticas de la biblioteca
-    getBibliotecaStats: (bibliotecaId) => 
+    getBibliotecaStats: (bibliotecaId) =>
         ipcRenderer.invoke('database:getBibliotecaStats', bibliotecaId),
-    
+
     // Obtener préstamos por mes
-    getPrestamosPorMes: (bibliotecaId, meses = 6) => 
+    getPrestamosPorMes: (bibliotecaId, meses = 6) =>
         ipcRenderer.invoke('database:getPrestamosPorMes', { bibliotecaId, meses }),
-    
+
     // Obtener distribución de libros por categoría
-    getLibrosPorCategoria: (bibliotecaId) => 
+    getLibrosPorCategoria: (bibliotecaId) =>
         ipcRenderer.invoke('database:getLibrosPorCategoria', bibliotecaId),
 
     // Obtener socios por mes (histórico acumulado)
-    getSociosPorMes: (bibliotecaId, meses = 6) => 
+    getSociosPorMes: (bibliotecaId, meses = 6) =>
         ipcRenderer.invoke('database:getSociosPorMes', { bibliotecaId, meses }),
 
     // ===== APIS DE UTILIDADES =====
-    
+
     // Hacer backup de la base de datos
-    backup: (destinationPath) => 
+    backup: (destinationPath) =>
         ipcRenderer.invoke('database:backup', destinationPath),
-    
+
     // Cerrar conexión a la base de datos
-    close: () => 
+    close: () =>
         ipcRenderer.invoke('database:close'),
-    
+
     // Insertar datos de ejemplo
-    insertSampleData: (bibliotecaId) => 
+    insertSampleData: (bibliotecaId) =>
         ipcRenderer.invoke('database:insertSampleData', bibliotecaId),
 
     // ===== APIS DE LA APLICACIÓN =====
-    
+
     // Escuchar eventos de la aplicación
-    onAppError: (callback) => 
+    onAppError: (callback) =>
         ipcRenderer.on('app:error', callback),
-    
+
     // Remover listener de eventos
-    removeAppErrorListener: (callback) => 
+    removeAppErrorListener: (callback) =>
         ipcRenderer.removeListener('app:error', callback),
 
     // ===== APIS DEL SISTEMA =====
-    
+
     // Obtener información del sistema
     getSystemInfo: () => ({
         platform: process.platform,
@@ -166,9 +168,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isDevelopment: () => process.env.NODE_ENV === 'development',
 
     // ===== APIS DE VENTANA =====
-    
+
     // Forzar focus de la ventana
-    focusWindow: () => 
+    focusWindow: () =>
         ipcRenderer.invoke('window:focus')
 });
 
@@ -208,17 +210,17 @@ contextBridge.exposeInMainWorld('utils', {
     validateISBN: (isbn) => {
         // Remover guiones y espacios
         const cleanISBN = isbn.replace(/[-\s]/g, '');
-        
+
         // ISBN-10: 10 dígitos
         if (cleanISBN.length === 10) {
             return /^\d{9}[\dX]$/.test(cleanISBN);
         }
-        
+
         // ISBN-13: 13 dígitos
         if (cleanISBN.length === 13) {
             return /^\d{13}$/.test(cleanISBN);
         }
-        
+
         return false;
     },
 
@@ -256,7 +258,7 @@ contextBridge.exposeInMainWorld('utils', {
     getPrestamoStatus: (fechaDevolucion, estado) => {
         if (estado === 'completado') return 'completado';
         if (estado === 'vencido') return 'vencido';
-        
+
         const isOverdue = this.isOverdue(fechaDevolucion);
         return isOverdue ? 'vencido' : 'activo';
     },
@@ -302,28 +304,28 @@ contextBridge.exposeInMainWorld('utils', {
 contextBridge.exposeInMainWorld('nativeDialog', {
     // Diálogo de confirmación
     confirm: (opts) => ipcRenderer.invoke('dialog:confirm', opts),
-    
+
     // Diálogo de mensaje/información
     message: (opts) => ipcRenderer.invoke('dialog:message', opts),
-    
+
     // Diálogo de error
     error: (opts) => ipcRenderer.invoke('dialog:error', opts),
-    
+
     // Diálogo de advertencia
     warning: (opts) => ipcRenderer.invoke('dialog:warning', opts),
-    
+
     // Diálogo de apertura de archivo
     open: (opts) => ipcRenderer.invoke('dialog:open', opts),
-    
+
     // Diálogo de apertura de múltiples archivos
     openMultiple: (opts) => ipcRenderer.invoke('dialog:openMultiple', opts),
-    
+
     // Diálogo de apertura de directorio
     openDirectory: (opts) => ipcRenderer.invoke('dialog:openDirectory', opts),
-    
+
     // Diálogo de guardado de archivo
     save: (opts) => ipcRenderer.invoke('dialog:save', opts),
-    
+
     // Asegurar foco en la ventana principal
     ensureFocus: () => ipcRenderer.invoke('ensure-focused')
 });
