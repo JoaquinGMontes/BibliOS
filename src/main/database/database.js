@@ -209,6 +209,7 @@ class DatabaseService {
                     fechaPrestamo DATETIME DEFAULT CURRENT_TIMESTAMP,
                     fechaDevolucion DATETIME,
                     fechaDevolucionReal DATETIME,
+                    fechaDevuelto DATETIME,
                     estado TEXT DEFAULT 'activo',
                     observaciones TEXT,
                     FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
@@ -425,6 +426,7 @@ class DatabaseService {
                             fechaPrestamo DATETIME DEFAULT CURRENT_TIMESTAMP,
                             fechaDevolucion DATETIME,
                             fechaDevolucionReal DATETIME,
+                            fechaDevuelto DATETIME,
                             estado TEXT DEFAULT 'activo',
                             observaciones TEXT,
                             FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
@@ -433,10 +435,10 @@ class DatabaseService {
                         )
                     `);
 
-                    // Copiar datos existentes
+                    // Copiar datos existentes (fechaDevuelto se obtiene de fechaDevolucionReal)
                     this.db.exec(`
-                        INSERT INTO prestamos_new (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones)
-                        SELECT id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones
+                        INSERT INTO prestamos_new (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, fechaDevuelto, estado, observaciones)
+                        SELECT id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, fechaDevolucionReal, estado, observaciones
                         FROM prestamos
                     `);
 
@@ -460,6 +462,19 @@ class DatabaseService {
                     console.log('Migración completada: préstamos ahora mantienen historial y FK socios(numeroDeSocio)');
                 } else {
                     console.log('Tabla préstamos ya tiene la estructura correcta (SET NULL)');
+                }
+            }
+
+            // Migración: agregar fechaDevuelto si no existe
+            const prestamosInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='prestamos'").get();
+            if (prestamosInfo) {
+                const prestamosColumns = this.db.prepare("PRAGMA table_info(prestamos)").all();
+                const hasFechaDevuelto = prestamosColumns.some(col => col.name === 'fechaDevuelto');
+                if (!hasFechaDevuelto) {
+                    console.log('Agregando columna fechaDevuelto a prestamos...');
+                    this.db.exec('ALTER TABLE prestamos ADD COLUMN fechaDevuelto DATETIME');
+                    this.db.exec(`UPDATE prestamos SET fechaDevuelto = fechaDevolucionReal WHERE estado = 'completado' AND fechaDevuelto IS NULL`);
+                    console.log('Columna fechaDevuelto agregada correctamente');
                 }
             }
         } catch (error) {
@@ -1131,6 +1146,17 @@ class DatabaseService {
         }
         ///////////////////////////////////////////////// Estado de disponibilidad del libro y cambio de estado del prestamo
     async devolverLibro(prestamoId) {
+        // Asegurar que la columna fechaDevuelto existe (por si la migración no se ejecutó)
+        try {
+            const columns = this.db.prepare("PRAGMA table_info(prestamos)").all();
+            const hasFechaDevuelto = columns.some(col => col.name === 'fechaDevuelto');
+            if (!hasFechaDevuelto) {
+                this.db.exec('ALTER TABLE prestamos ADD COLUMN fechaDevuelto DATETIME');
+            }
+        } catch (e) {
+            console.warn('No se pudo verificar/agregar fechaDevuelto:', e.message);
+        }
+
         // TRANSACCIÓN: Usa transacción para garantizar consistencia
         const transaction = this.db.transaction((prestamoId) => {
             // Obtener el préstamo
@@ -1155,10 +1181,12 @@ class DatabaseService {
                 throw new Error('El préstamo ya está completado');
             }
 
-            // Actualizar el préstamo
+            // Actualizar el préstamo: fechaDevuelto se asigna automáticamente con la fecha actual
             const updatePrestamo = this.db.prepare(`
                 UPDATE prestamos 
-                SET estado = 'completado', fechaDevolucionReal = CURRENT_TIMESTAMP 
+                SET estado = 'completado', 
+                    fechaDevolucionReal = CURRENT_TIMESTAMP, 
+                    fechaDevuelto = CURRENT_TIMESTAMP 
                 WHERE id = ?
             `);
             const result = updatePrestamo.run(prestamoId);

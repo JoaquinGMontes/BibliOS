@@ -77,6 +77,7 @@ export default function Prestamos() {
             fechaPrestamo: prestamo.fechaPrestamo ? prestamo.fechaPrestamo.split('T')[0] : '',
             fechaDevolucion: prestamo.fechaDevolucion ? prestamo.fechaDevolucion.split('T')[0] : '',
             fechaDevolucionReal: prestamo.fechaDevolucionReal ? prestamo.fechaDevolucionReal.split('T')[0] : null,
+            fechaDevuelto: prestamo.fechaDevuelto ? prestamo.fechaDevuelto.split('T')[0] : (prestamo.fechaDevolucionReal ? prestamo.fechaDevolucionReal.split('T')[0] : null),
             estado: prestamo.estado || 'activo',
             observaciones: prestamo.observaciones || ''
           }));
@@ -281,7 +282,8 @@ export default function Prestamos() {
           ...nuevoPrestamo,
           fechaPrestamo: nuevoPrestamo.fechaPrestamo ? nuevoPrestamo.fechaPrestamo.split('T')[0] : '',
           fechaDevolucion: nuevoPrestamo.fechaDevolucion ? nuevoPrestamo.fechaDevolucion.split('T')[0] : '',
-          fechaDevolucionReal: null
+          fechaDevolucionReal: null,
+          fechaDevuelto: null
         }]);
 
         // Marcar libro como no disponible
@@ -298,7 +300,8 @@ export default function Prestamos() {
           libroId,
           socioId,
           estado: 'activo',
-          fechaDevolucionReal: null
+          fechaDevolucionReal: null,
+          fechaDevuelto: null
         };
 
         setPrestamos([...prestamos, nuevoPrestamo]);
@@ -336,13 +339,15 @@ export default function Prestamos() {
         await window.electronAPI.devolverLibro(prestamoId);
       }
 
-      // Actualizar en la lista local
+      // Actualizar en la lista local (fechaDevuelto se asigna automáticamente con la fecha actual)
+      const fechaActual = new Date().toISOString().split('T')[0];
       setPrestamos(prestamos.map(prestamo => {
         if (prestamo.id === prestamoId) {
           return {
             ...prestamo,
             estado: 'completado',
-            fechaDevolucionReal: new Date().toISOString().split('T')[0]
+            fechaDevolucionReal: fechaActual,
+            fechaDevuelto: fechaActual
           };
         }
         return prestamo;
@@ -755,10 +760,10 @@ export default function Prestamos() {
                   <span className="label">Fecha de Devolución:</span>
                   <span className="value">{selectedPrestamo.fechaDevolucion}</span>
                 </div>
-                {selectedPrestamo.fechaDevolucionReal && (
+                {(selectedPrestamo.fechaDevuelto || selectedPrestamo.fechaDevolucionReal) && (
                   <div className="detail-row">
-                    <span className="label">Fecha de Devolución Real:</span>
-                    <span className="value">{selectedPrestamo.fechaDevolucionReal}</span>
+                    <span className="label">Fecha devuelto:</span>
+                    <span className="value">{selectedPrestamo.fechaDevuelto || selectedPrestamo.fechaDevolucionReal}</span>
                   </div>
                 )}
                 <div className="detail-row">
