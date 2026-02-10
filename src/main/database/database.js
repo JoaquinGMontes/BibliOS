@@ -212,7 +212,7 @@ class DatabaseService {
                     estado TEXT DEFAULT 'activo',
                     observaciones TEXT,
                     FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
-                    FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
+                    FOREIGN KEY (socioId) REFERENCES socios(numeroDeSocio) ON DELETE SET NULL,
                     FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
                 )
             `);
@@ -401,18 +401,21 @@ class DatabaseService {
                 console.log('Verificando migración de tabla préstamos...');
                 console.log('Definición actual:', tableDef ? tableDef.sql : 'No encontrada');
 
-                // Migrar si tiene CASCADE o si no tiene SET NULL
+                // Migrar si tiene CASCADE, si no tiene SET NULL, o si socios FK apunta a id en vez de numeroDeSocio
+                const hasWrongSociosFk = tableDef && tableDef.sql.includes('REFERENCES socios(id)');
                 const needsMigration = tableDef && (
                     tableDef.sql.includes('ON DELETE CASCADE') ||
-                    !tableDef.sql.includes('ON DELETE SET NULL')
+                    !tableDef.sql.includes('ON DELETE SET NULL') ||
+                    hasWrongSociosFk
                 );
 
-                console.log('¿Necesita migración?', needsMigration);
+                console.log('¿Necesita migración?', needsMigration, hasWrongSociosFk ? '(FK socios incorrecta)' : '');
 
                 if (needsMigration) {
-                    console.log('Migrando tabla préstamos: cambiando CASCADE a SET NULL...');
+                    console.log('Migrando tabla préstamos...');
+                    this.db.exec('PRAGMA foreign_keys = OFF');
 
-                    // Crear tabla temporal con la nueva estructura
+                    // Crear tabla temporal con la nueva estructura (socios usa numeroDeSocio como PK)
                     this.db.exec(`
                         CREATE TABLE prestamos_new (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -425,7 +428,7 @@ class DatabaseService {
                             estado TEXT DEFAULT 'activo',
                             observaciones TEXT,
                             FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
-                            FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
+                            FOREIGN KEY (socioId) REFERENCES socios(numeroDeSocio) ON DELETE SET NULL,
                             FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
                         )
                     `);
@@ -453,7 +456,8 @@ class DatabaseService {
                         CREATE INDEX IF NOT EXISTS idx_prestamos_devolucion ON prestamos(fechaDevolucion);
                     `);
 
-                    console.log('Migración completada: préstamos ahora mantienen historial al eliminar libros/socios');
+                    this.db.exec('PRAGMA foreign_keys = ON');
+                    console.log('Migración completada: préstamos ahora mantienen historial y FK socios(numeroDeSocio)');
                 } else {
                     console.log('Tabla préstamos ya tiene la estructura correcta (SET NULL)');
                 }
@@ -1030,8 +1034,8 @@ class DatabaseService {
                 throw new Error('El libro especificado no existe');
             }
 
-            // Verificar que el socio existe
-            const socio = this.db.prepare('SELECT * FROM socios WHERE id = ?').get(prestamoData.socioId);
+            // Verificar que el socio existe (la PK de socios es numeroDeSocio)
+            const socio = this.db.prepare('SELECT * FROM socios WHERE numeroDeSocio = ?').get(prestamoData.socioId);
             if (!socio) {
                 throw new Error('El socio especificado no existe');
             }
@@ -1138,7 +1142,7 @@ class DatabaseService {
                        COALESCE(s.email, '') as socioEmail
                 FROM prestamos p
                 LEFT JOIN libros l ON p.libroId = l.id
-                LEFT JOIN socios s ON p.socioId = s.id
+                LEFT JOIN socios s ON p.socioId = s.numeroDeSocio
                 WHERE p.id = ?
             `).get(prestamoId); //el coalesce es para que devuelva el primer valor que no sea null
             //aca le pasamos al prepare el id del prestamo del libro que queremos retornar al sistema(biblioteca)

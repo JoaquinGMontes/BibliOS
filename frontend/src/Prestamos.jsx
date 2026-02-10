@@ -60,7 +60,7 @@ export default function Prestamos() {
           // Cargar socios REALES de la biblioteca
           const sociosReales = await window.electronAPI.getSocios(library.id, {});
           const sociosFormateados = sociosReales.map(socio => ({
-            id: socio.id,
+            id: socio.numeroDeSocio ?? socio.id,
             nombre: socio.nombre,
             email: socio.email || '',
             telefono: socio.telefono || '',
@@ -163,28 +163,36 @@ export default function Prestamos() {
 
   const selectLibro = (libro) => {
     setSelectedLibro(libro);
-    setLibroSearch(`${libro.titulo} - ${libro.autor}`);
+    setLibroSearch(`${libro.titulo || ''} - ${libro.autor ?? ''}`);
     setShowLibroResults(false);
-    setFormData({ ...formData, libroId: libro.id });
+    setFormData(prev => ({ ...prev, libroId: libro.id }));
   };
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(socio.nombre);
+    setSocioSearch(socio.nombre || '');
     setShowSocioResults(false);
-    setFormData({ ...formData, socioId: socio.id });
+    setFormData(prev => ({ ...prev, socioId: socio.id }));
   };
 
-  const filteredLibros = libros.filter(libro =>
-    libro.disponible &&
-    (libro.titulo.toLowerCase().includes(libroSearch.toLowerCase()) ||
-      libro.autor.toLowerCase().includes(libroSearch.toLowerCase()))
-  );
+  const filteredLibros = libros.filter(libro => {
+    if (!libro.disponible) return false;
 
-  const filteredSocios = socios.filter(socio =>
-    socio.activo &&
-    socio.nombre.toLowerCase().includes(socioSearch.toLowerCase())
-  );
+    const search = (libroSearch || '').toLowerCase();
+    const titulo = (libro.titulo || '').toLowerCase();
+    const autor = (libro.autor || '').toLowerCase();
+
+    return titulo.includes(search) || autor.includes(search);
+  });
+
+  const filteredSocios = socios.filter(socio => {
+    if (!socio.activo) return false;
+
+    const search = (socioSearch || '').toLowerCase();
+    const nombre = (socio.nombre || '').toLowerCase();
+
+    return nombre.includes(search);
+  });
 
   // Manejo del formulario
   const handleInputChange = (e) => {
@@ -199,10 +207,10 @@ export default function Prestamos() {
       }
     }
 
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -242,12 +250,25 @@ export default function Prestamos() {
 
       const library = JSON.parse(storedLibrary);
 
+      // Usar IDs del formulario o de la selección actual (por si el estado se desincronizó)
+      const libroId = Number(formData.libroId) || selectedLibro?.id;
+      const socioId = Number(formData.socioId) || selectedSocio?.id;
+      const bibliotecaId = Number(library.id);
+
+      if (!libroId || !socioId || !bibliotecaId) {
+        await window.nativeDialog.error({
+          message: 'Datos incompletos',
+          detail: 'Por favor, selecciona un libro y un socio antes de crear el préstamo.'
+        });
+        return;
+      }
+
       // Crear préstamo en la base de datos
       if (window.electronAPI) {
         const nuevoPrestamo = await window.electronAPI.createPrestamo({
-          libroId: parseInt(formData.libroId),
-          socioId: parseInt(formData.socioId),
-          bibliotecaId: library.id,
+          libroId,
+          socioId,
+          bibliotecaId,
           fechaPrestamo: fechaPrestamo,
           fechaDevolucion: fechaDevolucion,
           observaciones: formData.observaciones || null
@@ -263,7 +284,7 @@ export default function Prestamos() {
 
         // Marcar libro como no disponible
         setLibros(libros.map(libro =>
-          libro.id === parseInt(formData.libroId)
+          libro.id === libroId
             ? { ...libro, disponible: false }
             : libro
         ));
@@ -272,6 +293,8 @@ export default function Prestamos() {
         const nuevoPrestamo = {
           id: prestamos.length + 1,
           ...formData,
+          libroId,
+          socioId,
           estado: 'activo',
           fechaDevolucionReal: null
         };
@@ -280,7 +303,7 @@ export default function Prestamos() {
 
         // Marcar libro como no disponible
         setLibros(libros.map(libro =>
-          libro.id === parseInt(formData.libroId)
+          libro.id === libroId
             ? { ...libro, disponible: false }
             : libro
         ));
@@ -376,9 +399,13 @@ export default function Prestamos() {
     const libro = getLibroById(prestamo.libroId);
     const socio = getSocioById(prestamo.socioId);
 
-    const matchesSearch = searchTerm === '' ||
-      libro?.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      socio?.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const search = (searchTerm || '').toLowerCase();
+    const titulo = (libro?.titulo || '').toLowerCase();
+    const nombreSocio = (socio?.nombre || '').toLowerCase();
+
+    const matchesSearch = search === '' ||
+      titulo.includes(search) ||
+      nombreSocio.includes(search);
 
     const matchesFilter = filterStatus === 'todos' || prestamo.estado === filterStatus;
 
