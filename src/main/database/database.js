@@ -86,11 +86,11 @@ class DatabaseService {
             // Habilitar foreign keys
             this.db.pragma('foreign_keys = ON');
 
+            // Migrar tablas existentes si es necesario (ANTES de crear tablas)
+            this.migrateTables();
+
             // Funcion para crear tablas (implementada abajo)
             this.createTables();
-
-            // Migrar tablas existentes si es necesario
-            this.migrateTables();
 
             // Verificar si el archivo de la base de datos se creó correctamente
             if (!fs.existsSync(this.dbPath)) {
@@ -259,6 +259,45 @@ class DatabaseService {
 
     migrateTables() {
         try {
+            // ===== MIGRACIÓN DE TABLA LIBROS: De estructura antigua a MARC =====
+            const librosTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='libros'").get();
+
+            if (librosTableInfo) {
+                // Obtener la estructura actual de la tabla libros
+                const librosColumns = this.db.prepare("PRAGMA table_info(libros)").all();
+                const hasMainAuthor = librosColumns.some(col => col.name === 'mainAuthor');
+                const hasAutorAntiguo = librosColumns.some(col => col.name === 'autor');
+
+                // Si tiene estructura antigua (campo 'autor', 'categoria', 'ubicacion', etc.)
+                if (hasAutorAntiguo && !hasMainAuthor) {
+                    console.log('Detectada estructura antigua de tabla libros. Iniciando migración a formato MARC...');
+
+                    try {
+                        // Eliminar tabla antigua y sus índices
+                        this.db.exec(`
+                            DROP INDEX IF EXISTS idx_libros_titulo;
+                            DROP INDEX IF EXISTS idx_libros_autor;
+                            DROP INDEX IF EXISTS idx_libros_categoria;
+                            DROP INDEX IF EXISTS idx_libros_biblioteca;
+                            DROP INDEX IF EXISTS idx_libros_isbn;
+                            DROP INDEX IF EXISTS idx_libros_estado;
+                            DROP INDEX IF EXISTS idx_libros_disponibles;
+                            DROP TABLE IF EXISTS libros;
+                        `);
+
+                        console.log('Tabla libros antigua eliminada. Se recreará con estructura MARC.');
+                    } catch (error) {
+                        console.error('Error al eliminar tabla libros antigua:', error);
+                        // Si hay error, intentar solo drop simple
+                        try {
+                            this.db.exec('DROP TABLE IF EXISTS libros CASCADE;');
+                        } catch (e) {
+                            console.warn('No se pudo eliminar tabla libros, continuando...');
+                        }
+                    }
+                }
+            }
+
             // Verificar si la tabla socios existe
             const tableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='socios'").get();
 
@@ -551,7 +590,7 @@ class DatabaseService {
             const existingBook = this.db.prepare(
                 'SELECT id FROM libros WHERE controlNumber = ? AND bibliotecaId = ?'
             ).get(libroData.controlNumber, libroData.bibliotecaId);
-            
+
             if (existingBook) {
                 throw new Error(`Ya existe un libro con el número de control "${libroData.controlNumber}" en esta biblioteca`);
             }
@@ -1303,8 +1342,7 @@ class DatabaseService {
     async insertSampleData(bibliotecaId) {
         try {
             // Insertar libros de ejemplo con la nueva estructura (formato MARC)
-            const librosEjemplo = [
-                {
+            const librosEjemplo = [{
                     controlNumber: 'LIB-001',
                     controlAgency: 'AR-LpUBP',
                     titulo: 'El Señor de los Anillos',
@@ -1379,8 +1417,7 @@ class DatabaseService {
             ];
 
             // Insertar socios de ejemplo (sin cambios)
-            const sociosEjemplo = [
-                {
+            const sociosEjemplo = [{
                     nombre: 'María González',
                     email: 'maria@email.com',
                     telefono: '123-456-789',
