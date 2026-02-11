@@ -96,33 +96,24 @@ function Login() {
     try {
       // Verificar si estamos en Electron
       if (window.electronAPI) {
-        // Usar la base de datos SQLite
-        const bibliotecas = await window.electronAPI.getBibliotecas();
+        // Validar nombre + contraseña en el backend (SQLite)
+        const biblioteca = await window.electronAPI.validateBibliotecaLogin(libraryName.trim(), password);
 
-        // Buscar la biblioteca por nombre
-        const biblioteca = bibliotecas.find(bib =>
-          bib.nombre.toLowerCase().includes(libraryName.toLowerCase())
-        );
+        // Activar la biblioteca encontrada
+        await window.electronAPI.activateBiblioteca(biblioteca.id);
 
-        if (biblioteca) {
-          // Activar la biblioteca encontrada
-          await window.electronAPI.activateBiblioteca(biblioteca.id);
+        // Guardar en localStorage para compatibilidad con el sistema de auth
+        localStorage.setItem('bibliotecaActiva', JSON.stringify(biblioteca));
+        localStorage.setItem('authData', JSON.stringify({
+          libraryId: biblioteca.id,
+          authMethod: 'password',
+          hashedValue: '123456789',
+          salt: 'mock-salt-1',
+          createdAt: new Date().toISOString()
+        }));
 
-          // Guardar en localStorage para compatibilidad con el sistema de auth
-          localStorage.setItem('bibliotecaActiva', JSON.stringify(biblioteca));
-          localStorage.setItem('authData', JSON.stringify({
-            libraryId: biblioteca.id,
-            authMethod: 'password',
-            hashedValue: '123456789', // Por ahora usar un hash simple
-            salt: 'mock-salt-1',
-            createdAt: new Date().toISOString()
-          }));
-
-          // Redirigir al dashboard
-          navigate('/dashboard');
-        } else {
-          setError('Biblioteca no encontrada. Verifica el nombre o crea una nueva biblioteca.');
-        }
+        // Redirigir al dashboard
+        navigate('/dashboard');
       } else {
         // Fallback para desarrollo sin Electron
         if (libraryName.toLowerCase().includes('utn') && password === 'UTN') {
@@ -155,7 +146,7 @@ function Login() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Error durante la autenticación');
+      setError(error?.message || 'Error durante la autenticación');
     } finally {
       setIsLoading(false);
     }

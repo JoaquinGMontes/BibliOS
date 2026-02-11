@@ -123,10 +123,10 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      // Crear nueva biblioteca usando el hook
-      const newLibrary = await createLibrary(formData);
+      // Crear nueva biblioteca con contraseña (se persiste hasheada en la BD)
+      const newLibrary = await createLibrary({ ...formData, password });
 
-      // Configurar autenticación para la biblioteca (solo contraseña)
+      // Configurar autenticación en el cliente para compatibilidad con el flujo actual
       createLibraryAuth(newLibrary, 'password', password);
 
       // Limpiar el formulario COMPLETAMENTE

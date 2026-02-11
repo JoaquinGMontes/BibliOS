@@ -1,6 +1,13 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
 const { app } = require('electron');
+
+// Constantes para hash de contraseña
+const PASSWORD_SALT_LENGTH = 16;
+const PASSWORD_ITERATIONS = 100000;
+const PASSWORD_KEY_LEN = 64;
+const PASSWORD_DIGEST = 'sha512';
 
 // ===== VALIDADORES =====
 class Validators {
@@ -54,6 +61,31 @@ class Validators {
         }
         return true;
     }
+}
+
+// Helpers para hash de contraseña de biblioteca
+function hashPassword(password) {
+    const salt = crypto.randomBytes(PASSWORD_SALT_LENGTH).toString('hex');
+    const hash = crypto.pbkdf2Sync(
+        password,
+        salt,
+        PASSWORD_ITERATIONS,
+        PASSWORD_KEY_LEN,
+        PASSWORD_DIGEST
+    ).toString('hex');
+    return { salt, hash };
+}
+
+function verifyPassword(password, salt, storedHash) {
+    if (!salt || !storedHash) return false;
+    const hash = crypto.pbkdf2Sync(
+        password,
+        salt,
+        PASSWORD_ITERATIONS,
+        PASSWORD_KEY_LEN,
+        PASSWORD_DIGEST
+    ).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(hash, 'hex'));
 }
 
 class DatabaseService {
@@ -128,7 +160,9 @@ class DatabaseService {
                     horarios TEXT,
                     descripcion TEXT,
                     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    activa BOOLEAN DEFAULT 0
+                    activa BOOLEAN DEFAULT 0,
+                    passwordSalt TEXT,
+                    passwordHash TEXT
                 )
             `);
 
@@ -260,6 +294,18 @@ class DatabaseService {
 
     migrateTables() {
         try {
+            // ===== MIGRACIÓN: Añadir columnas de contraseña a bibliotecas =====
+            const bibliotecasTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='bibliotecas'").get();
+            if (bibliotecasTableInfo) {
+                const bibliotecasColumns = this.db.prepare("PRAGMA table_info(bibliotecas)").all();
+                const hasPasswordHash = bibliotecasColumns.some(col => col.name === 'passwordHash');
+                if (!hasPasswordHash) {
+                    console.log('Añadiendo columnas passwordSalt y passwordHash a bibliotecas...');
+                    this.db.exec('ALTER TABLE bibliotecas ADD COLUMN passwordSalt TEXT');
+                    this.db.exec('ALTER TABLE bibliotecas ADD COLUMN passwordHash TEXT');
+                }
+            }
+
             // ===== MIGRACIÓN DE TABLA LIBROS: De estructura antigua a MARC =====
             const librosTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='libros'").get();
 
@@ -485,10 +531,21 @@ class DatabaseService {
 
     // ===== OPERACIONES DE BIBLIOTECAS =====
 
+    _sanitizeBiblioteca(b) {
+        if (!b) return b;
+        const { passwordSalt, passwordHash, ...rest } = b;
+        return rest;
+    }
+
     async createBiblioteca(bibliotecaData) {
         try {
             // VALIDACIONES
             Validators.validateRequired(bibliotecaData.nombre, 'nombre');
+            Validators.validateRequired(bibliotecaData.password, 'contraseña');
+            const pwd = String(bibliotecaData.password || '').trim();
+            if (pwd.length < 6) {
+                throw new Error('La contraseña debe tener al menos 6 caracteres');
+            }
 
             if (bibliotecaData.email && !Validators.validateEmail(bibliotecaData.email)) {
                 throw new Error('El email proporcionado no es válido');
@@ -508,9 +565,11 @@ class DatabaseService {
             // Desactivar todas las bibliotecas existentes
             this.db.prepare('UPDATE bibliotecas SET activa = 0').run();
 
+            const { salt, hash } = hashPassword(pwd);
+
             const stmt = this.db.prepare(`
-                INSERT INTO bibliotecas (nombre, direccion, telefono, email, responsable, horarios, descripcion, activa)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                INSERT INTO bibliotecas (nombre, direccion, telefono, email, responsable, horarios, descripcion, activa, passwordSalt, passwordHash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
             `);
 
             const result = stmt.run(
@@ -520,20 +579,40 @@ class DatabaseService {
                 bibliotecaData.email || null,
                 bibliotecaData.responsable || null,
                 bibliotecaData.horarios || null,
-                bibliotecaData.descripcion || null
+                bibliotecaData.descripcion || null,
+                salt,
+                hash
             );
 
-            return this.getBibliotecaById(result.lastInsertRowid);
+            return this._sanitizeBiblioteca(this.getBibliotecaById(result.lastInsertRowid));
         } catch (error) {
             console.error('Error al crear biblioteca:', error);
             throw error;
         }
     }
 
+    async validateBibliotecaLogin(nombre, password) {
+        const nombreTrim = String(nombre || '').trim();
+        Validators.validateRequired(nombreTrim, 'nombre de la biblioteca');
+        Validators.validateRequired(password, 'contraseña');
+        const biblioteca = this.db.prepare('SELECT * FROM bibliotecas WHERE LOWER(TRIM(nombre)) = LOWER(?)').get(nombreTrim);
+        if (!biblioteca) {
+            throw new Error('Biblioteca no encontrada. Verifica el nombre.');
+        }
+        // Bibliotecas creadas antes de tener contraseña (passwordHash null)
+        if (!biblioteca.passwordHash) {
+            throw new Error('Esta biblioteca fue creada antes de actualizar el sistema. Por favor, regístrala de nuevo desde Registro para asignar una contraseña.');
+        }
+        if (!verifyPassword(password, biblioteca.passwordSalt, biblioteca.passwordHash)) {
+            throw new Error('Contraseña incorrecta.');
+        }
+        return this._sanitizeBiblioteca(biblioteca);
+    }
+
     async getBibliotecas() {
         try {
             const stmt = this.db.prepare('SELECT * FROM bibliotecas ORDER BY fechaCreacion DESC');
-            return stmt.all();
+            return stmt.all().map(b => this._sanitizeBiblioteca(b));
         } catch (error) {
             console.error('Error al obtener bibliotecas:', error);
             throw error;
@@ -543,7 +622,7 @@ class DatabaseService {
     async getBibliotecaById(id) {
         try {
             const stmt = this.db.prepare('SELECT * FROM bibliotecas WHERE id = ?');
-            return stmt.get(id);
+            return this._sanitizeBiblioteca(stmt.get(id));
         } catch (error) {
             console.error('Error al obtener biblioteca:', error);
             throw error;
@@ -1740,7 +1819,7 @@ class DatabaseService {
                 return { exists: true, id: existingLibrary.id };
             }
 
-            // Crear la biblioteca
+            // Crear la biblioteca (contraseña por defecto para demo: UTN-FRLP)
             const biblioteca = await this.createBiblioteca({
                 nombre: 'UTN-FRLP',
                 direccion: 'Av. 1 y 47, La Plata, Buenos Aires',
@@ -1748,7 +1827,8 @@ class DatabaseService {
                 email: 'biblioteca@utn.frlp.edu.ar',
                 responsable: 'Biblioteca Central UTN-FRLP',
                 horarios: 'Lunes a Viernes: 8:00 - 20:00',
-                descripcion: 'Biblioteca de la Universidad Tecnológica Nacional - Facultad Regional La Plata'
+                descripcion: 'Biblioteca de la Universidad Tecnológica Nacional - Facultad Regional La Plata',
+                password: 'UTN-FRLP'
             });
 
             console.log('Biblioteca UTN-FRLP creada con ID:', biblioteca.id);

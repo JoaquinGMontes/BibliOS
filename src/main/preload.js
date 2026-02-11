@@ -34,6 +34,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     activateBiblioteca: (id) =>
         ipcRenderer.invoke('database:activateBiblioteca', id),
 
+    // Validar login (nombre + contraseña) y devolver biblioteca si es correcto
+    validateBibliotecaLogin: (nombre, password) =>
+        ipcRenderer.invoke('database:validateBibliotecaLogin', { nombre, password }),
+
     // Crear biblioteca UTN-FRLP con datos de muestra
     createUTNLibrary: () =>
         ipcRenderer.invoke('database:createUTNLibrary'),

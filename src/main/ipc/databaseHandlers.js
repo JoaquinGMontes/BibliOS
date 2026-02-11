@@ -73,6 +73,15 @@ class DatabaseHandlers {
             }
         });
 
+        ipcMain.handle('database:validateBibliotecaLogin', async (event, { nombre, password }) => {
+            try {
+                return await this.db.validateBibliotecaLogin(nombre, password);
+            } catch (error) {
+                console.error('Error en validateBibliotecaLogin:', error);
+                throw error;
+            }
+        });
+
         ipcMain.handle('database:createUTNLibrary', async () => {
             try {
                 return await this.db.createUTNLibrary();
