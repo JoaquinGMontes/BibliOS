@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Library, LogIn, X, AlertCircle, Lock, Eye, EyeOff, Sparkles, Activity } from 'lucide-react';
 import './Login.css';
 import Navbar from './Navbar.jsx';
+import AppModal from './components/AppModal.jsx';
 
 function Login() {
   const navigate = useNavigate();
@@ -14,6 +15,14 @@ function Login() {
   const [currentText, setCurrentText] = useState(0);
   const [isChanging, setIsChanging] = useState(false);
   const [isCreatingDemo, setIsCreatingDemo] = useState(false);
+  const [modal, setModal] = useState({
+    open: false,
+    type: 'success',
+    title: '',
+    message: '',
+    detail: '',
+    action: null
+  });
 
   const inspirationTexts = [
     "Trabajamos para nosotros",
@@ -141,15 +150,42 @@ function Login() {
 
           navigate('/dashboard');
         } else {
-          setError('Credenciales incorrectas. Usa "UTN-FRLP" y "UTN"');
+          setModal({
+            open: true,
+            type: 'error',
+            title: 'Credenciales incorrectas',
+            message: 'Usa "UTN-FRLP" y "UTN" para el entorno de prueba.',
+            detail: '',
+            action: null
+          });
         }
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(error?.message || 'Error durante la autenticación');
+    } catch (err) {
+      console.error('Login error:', err);
+      const raw = err?.message || '';
+      let friendlyMessage = 'Error durante la autenticación';
+      if (raw.includes('Contraseña incorrecta')) friendlyMessage = 'Contraseña incorrecta.';
+      else if (raw.includes('Biblioteca no encontrada')) friendlyMessage = 'Biblioteca no encontrada. Verifica el nombre.';
+      else if (raw.includes('re-registr')) friendlyMessage = 'Esta biblioteca debe registrarse de nuevo para usar contraseña.';
+      setModal({
+        open: true,
+        type: 'error',
+        title: 'Error al iniciar sesión',
+        message: friendlyMessage,
+        detail: '',
+        action: null
+      });
+      setError('');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    if (modal.action === 'navigate_dashboard') {
+      navigate('/dashboard');
+    }
+    setModal(prev => ({ ...prev, open: false, action: null }));
   };
 
   const handleCreateAndLoginUTN = async () => {
@@ -174,30 +210,35 @@ function Login() {
           localStorage.setItem('authData', JSON.stringify({
             libraryId: bibliotecaActiva.id,
             authMethod: 'password',
-            hashedValue: 'UTN', // Contraseña simple
+            hashedValue: 'UTN',
             salt: 'utn-salt',
             createdAt: new Date().toISOString()
           }));
 
-          // Mostrar mensaje de éxito
+          // Mostrar modal de éxito (estilo BibliOS) y al aceptar ir al dashboard
           if (result && result.exists) {
-            // Biblioteca ya existía - simplemente iniciar sesión
-            await window.nativeDialog.message({
-              message: '✅ Sesión iniciada con la biblioteca UTN-FRLP existente.',
+            setModal({
+              open: true,
+              type: 'success',
+              title: 'Sesión iniciada',
+              message: 'Sesión iniciada con la biblioteca UTN-FRLP existente.',
               detail: result.datos && result.datos.librosInsertados
-                ? `📚 ${result.datos.librosInsertados} libros\n👥 ${result.datos.sociosInsertados} socios\n📋 ${result.datos.prestamosInsertados} préstamos`
-                : 'La biblioteca ya estaba creada con todos sus datos.'
+                ? `${result.datos.librosInsertados} libros · ${result.datos.sociosInsertados} socios · ${result.datos.prestamosInsertados} préstamos`
+                : 'La biblioteca ya estaba creada con todos sus datos.',
+              action: 'navigate_dashboard'
             });
           } else if (result && result.datos) {
-            // Biblioteca recién creada
-            await window.nativeDialog.message({
-              message: '✅ ¡Biblioteca UTN-FRLP creada e iniciada!',
-              detail: `📚 ${result.datos.librosInsertados} libros insertados\n👥 ${result.datos.sociosInsertados} socios insertados\n📋 ${result.datos.prestamosInsertados} préstamos creados`
+            setModal({
+              open: true,
+              type: 'success',
+              title: 'Biblioteca creada',
+              message: 'Biblioteca UTN-FRLP creada e iniciada correctamente.',
+              detail: `${result.datos.librosInsertados} libros · ${result.datos.sociosInsertados} socios · ${result.datos.prestamosInsertados} préstamos`,
+              action: 'navigate_dashboard'
             });
+          } else {
+            navigate('/dashboard');
           }
-
-          // Redirigir al dashboard
-          navigate('/dashboard');
         } else {
           setError('Error al obtener la biblioteca activa');
         }
@@ -381,6 +422,16 @@ function Login() {
           </div>
         </div>
       </div>
+
+      <AppModal
+        open={modal.open}
+        onClose={handleCloseModal}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        detail={modal.detail}
+        buttonText="Aceptar"
+      />
     </div>
   );
 }

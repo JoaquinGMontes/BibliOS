@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth.js';
 import { useLibrary } from './hooks/useLibrary.js';
 import { useTheme } from './hooks/useTheme.js';
 import { useState, useEffect } from 'react';
+import AppModal from './components/AppModal.jsx';
 
 export default function Navbar() {
   const location = useLocation();
@@ -16,36 +17,18 @@ export default function Navbar() {
   const { libraries } = useLibrary();
   const { theme, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      const ok = await window.nativeDialog.confirm({
-        message: '¿Seguro que querés cerrar sesión?',
-        detail: 'Se cerrará tu sesión actual.',
-        buttons: ['Cancelar', 'Cerrar sesión'],
-        defaultId: 1,
-        cancelId: 0,
-        okIndex: 1
-      });
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
 
-      if (ok) {
-        closeMenu();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-        await window.nativeDialog.ensureFocus();
-      }
-    } catch (error) {
-      console.error('Error en confirmación de logout:', error);
-      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-        closeMenu();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-      }
-    }
+  const handleLogoutConfirm = () => {
+    closeMenu();
+    localStorage.removeItem('bibliotecaActiva');
+    localStorage.removeItem('authData');
+    logout();
+    navigate('/');
   };
 
   const handleLogin = () => {
@@ -164,7 +147,7 @@ export default function Navbar() {
           </button>
           
           <button
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="footer-btn logout"
             title="Cerrar sesión"
           >
@@ -173,6 +156,18 @@ export default function Navbar() {
           </button>
         </div>
       </aside>
+
+      <AppModal
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        type="confirm"
+        title="Cerrar sesión"
+        message="¿Seguro que querés cerrar sesión?"
+        detail="Se cerrará tu sesión actual."
+        secondaryButtonText="Cancelar"
+        primaryButtonText="Cerrar sesión"
+        onPrimaryClick={handleLogoutConfirm}
+      />
     </>
   );
 } 

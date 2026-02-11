@@ -1,0 +1,163 @@
+/* AppModal - Estilo BibliOS (tema oscuro, acentos dorados) */
+.app-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  animation: appModalFadeIn 0.2s ease-out;
+}
+
+@keyframes appModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.app-modal-box {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: rgba(28, 28, 28, 0.98);
+  border: 1px solid rgba(201, 163, 104, 0.4);
+  border-radius: 20px;
+  padding: 2rem 2rem 1.75rem;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(201, 163, 104, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: appModalSlideIn 0.25s ease-out;
+}
+
+@keyframes appModalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.app-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.app-modal-close:hover {
+  color: #c9a368;
+  background: rgba(201, 163, 104, 0.15);
+}
+
+.app-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.app-modal-icon--success {
+  color: #c9a368;
+  filter: drop-shadow(0 0 12px rgba(201, 163, 104, 0.3));
+}
+
+.app-modal-icon--error {
+  color: #f87171;
+  filter: drop-shadow(0 0 12px rgba(248, 113, 113, 0.25));
+}
+
+.app-modal-title {
+  color: #f3f4f6;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.app-modal-message {
+  color: #d1d5db;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+}
+
+.app-modal-detail {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0 0 1.25rem 0;
+  text-align: center;
+  white-space: pre-line;
+}
+
+.app-modal-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #c9a368 0%, #b58b4a 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow:
+    0 3px 12px rgba(201, 163, 104, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.app-modal-btn:hover {
+  background: linear-gradient(135deg, #b58b4a 0%, #a67c3a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(201, 163, 104, 0.4);
+}
+
+.app-modal-btn:active {
+  transform: translateY(0);
+}
+
+.app-modal-actions {
+  margin-top: 0.25rem;
+}
+
+.app-modal-actions--two {
+  display: flex;
+  gap: 0.75rem;
+  flex-direction: row-reverse;
+}
+
+.app-modal-actions--two .app-modal-btn {
+  flex: 1;
+}
+
+.app-modal-btn--secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d1d5db;
+  box-shadow: none;
+  border: 1px solid rgba(201, 163, 104, 0.3);
+}
+
+.app-modal-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
+  box-shadow: none;
+  transform: translateY(-1px);
+}
