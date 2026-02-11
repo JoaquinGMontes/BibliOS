@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import './socios.css';
 import Navbar from './Navbar.jsx';
+import AppModal from './components/AppModal.jsx';
 
 export default function Socios() {
   // Estados principales
@@ -20,6 +21,7 @@ export default function Socios() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [socioToEdit, setSocioToEdit] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [errorModal, setErrorModal] = useState({ open: false, title: '', message: '' });
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -56,6 +58,7 @@ export default function Socios() {
             return {
               id: socio.numeroDeSocio,
               numeroDeSocio: socio.numeroDeSocio,
+              numeroEnBiblioteca: socio.numeroEnBiblioteca ?? socio.numeroDeSocio,
               nombre: socio.nombre,
               email: socio.email || '',
               telefono: socio.telefono || '',
@@ -100,6 +103,7 @@ export default function Socios() {
             return {
               id: socio.numeroDeSocio,
               numeroDeSocio: socio.numeroDeSocio,
+              numeroEnBiblioteca: socio.numeroEnBiblioteca ?? socio.numeroDeSocio,
               nombre: socio.nombre,
               email: socio.email || '',
               telefono: socio.telefono || '',
@@ -179,9 +183,10 @@ export default function Socios() {
       // Obtener biblioteca activa
       const storedLibrary = localStorage.getItem('bibliotecaActiva');
       if (!storedLibrary) {
-        await window.nativeDialog.error({
-          message: 'No hay biblioteca activa',
-          detail: 'Por favor, selecciona una biblioteca primero.'
+        setErrorModal({
+          open: true,
+          title: 'Sin biblioteca activa',
+          message: 'Por favor, selecciona una biblioteca primero.'
         });
         return;
       }
@@ -209,6 +214,7 @@ export default function Socios() {
         const socioFormateado = {
           id: newSocio.numeroDeSocio,
           numeroDeSocio: newSocio.numeroDeSocio,
+          numeroEnBiblioteca: newSocio.numeroEnBiblioteca ?? newSocio.numeroDeSocio,
           nombre: newSocio.nombre,
           email: newSocio.email || '',
           telefono: newSocio.telefono || '',
@@ -248,9 +254,12 @@ export default function Socios() {
       setShowForm(false);
     } catch (error) {
       console.error('Error al crear socio:', error);
-      await window.nativeDialog.error({
-        message: 'Error al crear socio',
-        detail: error.message
+      const raw = error?.message || '';
+      let msg = raw.includes('Error invoking') ? (raw.match(/Error: (.+)$/)?.[1] || raw) : raw;
+      setErrorModal({
+        open: true,
+        title: 'Error al crear socio',
+        message: msg
       });
     }
   };
@@ -273,9 +282,12 @@ export default function Socios() {
         setSocioToDelete(null);
       } catch (error) {
         console.error('Error al eliminar socio:', error);
-        await window.nativeDialog.error({
-          message: 'Error al eliminar socio',
-          detail: error.message
+        const raw = error?.message || '';
+        let msg = raw.includes('Error invoking') ? (raw.match(/Error: (.+)$/)?.[1] || raw) : raw;
+        setErrorModal({
+          open: true,
+          title: 'Error al eliminar socio',
+          message: msg
         });
       }
     }
@@ -340,9 +352,12 @@ export default function Socios() {
       setEditFormData({});
     } catch (error) {
       console.error('Error al actualizar socio:', error);
-      await window.nativeDialog.error({
-        message: 'Error al actualizar socio',
-        detail: error.message
+      const raw = error?.message || '';
+      let msg = raw.includes('Error invoking') ? (raw.match(/Error: (.+)$/)?.[1] || raw) : raw;
+      setErrorModal({
+        open: true,
+        title: 'Error al actualizar socio',
+        message: msg
       });
     }
   };
@@ -564,7 +579,7 @@ export default function Socios() {
                       <td>
                         <div className="socio-number">
                           <Hash size={14} />
-                          {socio.numeroDeSocio}
+                          {socio.numeroEnBiblioteca ?? socio.numeroDeSocio}
                         </div>
                       </td>
                       <td>
@@ -758,7 +773,7 @@ export default function Socios() {
           <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>Editar Socio #{socioToEdit.id}</h3>
+                <h3>Editar Socio #{socioToEdit.numeroEnBiblioteca ?? socioToEdit.id}</h3>
                 <button
                   className="close-button"
                   onClick={() => setShowEditModal(false)}
@@ -850,6 +865,15 @@ export default function Socios() {
           </div>
         )}
       </div>
+
+      <AppModal
+        open={errorModal.open}
+        onClose={() => setErrorModal(prev => ({ ...prev, open: false }))}
+        type="error"
+        title={errorModal.title}
+        message={errorModal.message}
+        buttonText="Aceptar"
+      />
     </>
   );
 } 

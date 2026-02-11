@@ -217,12 +217,13 @@ class DatabaseService {
                 )
             `);
 
-            // Tabla socios
+            // Tabla socios (email único por biblioteca; numeroEnBiblioteca = secuencia 1,2,3 por biblioteca)
             this.db.exec(`
                 CREATE TABLE IF NOT EXISTS socios (
                     numeroDeSocio INTEGER PRIMARY KEY AUTOINCREMENT,
+                    numeroEnBiblioteca INTEGER NOT NULL DEFAULT 1,
                     nombre TEXT NOT NULL,
-                    email TEXT NOT NULL UNIQUE,
+                    email TEXT NOT NULL,
                     telefono TEXT,
                     direccion TEXT,
                     fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -436,6 +437,65 @@ class DatabaseService {
                         this.db.exec('PRAGMA foreign_keys = ON');
                         console.log('✅ Tabla socios eliminada, se recreará con estructura correcta');
                     } catch (e) {}
+                }
+            }
+
+            // Migración: añadir numeroEnBiblioteca a socios (secuencia por biblioteca para mostrar #1, #2, ...)
+            const sociosTableNumero = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='socios'").get();
+            if (sociosTableNumero) {
+                const sociosCols = this.db.prepare("PRAGMA table_info(socios)").all();
+                const hasNumeroEnBiblioteca = sociosCols.some(c => c.name === 'numeroEnBiblioteca');
+                if (!hasNumeroEnBiblioteca) {
+                    console.log('Añadiendo columna numeroEnBiblioteca a socios...');
+                    this.db.exec('ALTER TABLE socios ADD COLUMN numeroEnBiblioteca INTEGER NOT NULL DEFAULT 1');
+                    this.db.exec(`
+                        UPDATE socios SET numeroEnBiblioteca = (
+                            SELECT COUNT(*) FROM socios s2
+                            WHERE s2.bibliotecaId = socios.bibliotecaId AND s2.numeroDeSocio <= socios.numeroDeSocio
+                        )
+                    `);
+                }
+            }
+
+            // Migración: quitar UNIQUE de email en socios para permitir mismo email en distintas bibliotecas
+            const sociosTableForEmail = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='socios'").get();
+            if (sociosTableForEmail) {
+                const sociosSchema = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='socios'").get();
+                if (sociosSchema && sociosSchema.sql && sociosSchema.sql.includes('email') && sociosSchema.sql.includes('UNIQUE')) {
+                    console.log('Migración: quitando UNIQUE de email en socios (permitir mismo email en varias bibliotecas)...');
+                    this.db.exec('PRAGMA foreign_keys = OFF');
+                    this.db.exec(`
+                        CREATE TABLE socios_email_mig (
+                            numeroDeSocio INTEGER PRIMARY KEY AUTOINCREMENT,
+                            numeroEnBiblioteca INTEGER NOT NULL DEFAULT 1,
+                            nombre TEXT NOT NULL,
+                            email TEXT NOT NULL,
+                            telefono TEXT,
+                            direccion TEXT,
+                            fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            estado TEXT DEFAULT 'activo',
+                            observaciones TEXT,
+                            bibliotecaId INTEGER NOT NULL,
+                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                        )
+                    `);
+                    this.db.exec(`
+                        INSERT INTO socios_email_mig (numeroDeSocio, numeroEnBiblioteca, nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId)
+                        SELECT numeroDeSocio,
+                            (SELECT COUNT(*) FROM socios s2 WHERE s2.bibliotecaId = socios.bibliotecaId AND s2.numeroDeSocio <= socios.numeroDeSocio),
+                            nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId
+                        FROM socios
+                    `);
+                    this.db.exec('DROP TABLE socios');
+                    this.db.exec('ALTER TABLE socios_email_mig RENAME TO socios');
+                    this.db.exec(`
+                        CREATE INDEX IF NOT EXISTS idx_socios_nombre ON socios(nombre);
+                        CREATE INDEX IF NOT EXISTS idx_socios_biblioteca ON socios(bibliotecaId);
+                        CREATE INDEX IF NOT EXISTS idx_socios_estado ON socios(estado);
+                        CREATE INDEX IF NOT EXISTS idx_socios_email ON socios(email);
+                    `);
+                    this.db.exec('PRAGMA foreign_keys = ON');
+                    console.log('✅ Migración email socios completada');
                 }
             }
 
@@ -917,22 +977,28 @@ class DatabaseService {
                 throw new Error('La biblioteca especificada no existe');
             }
 
-            // Verificar si ya existe un socio con ese email (globalmente, no solo por biblioteca)
+            // Verificar si ya existe un socio con ese email en esta biblioteca (cada biblioteca tiene sus propios socios; el mismo email puede estar en varias bibliotecas)
             const emailNormalizado = socioData.email.toLowerCase().trim();
-            const existingSocio = this.db.prepare('SELECT numeroDeSocio, nombre FROM socios WHERE LOWER(TRIM(email)) = ?').get(emailNormalizado);
+            const existingSocio = this.db.prepare('SELECT numeroDeSocio, nombre FROM socios WHERE LOWER(TRIM(email)) = ? AND bibliotecaId = ?').get(emailNormalizado, socioData.bibliotecaId);
 
             if (existingSocio) {
-                throw new Error(`Ya existe un socio con el email "${socioData.email}". El email debe ser único.`);
+                throw new Error(`Ya existe un socio con el email "${socioData.email}" en esta biblioteca. El email debe ser único dentro de la biblioteca.`);
             }
 
-            console.log('📝 Insertando socio:', socioData.nombre, 'con email:', emailNormalizado);
+            // Siguiente número de socio dentro de esta biblioteca (1, 2, 3, ...)
+            const nextNumeroEnBiblioteca = this.db.prepare(
+                'SELECT COALESCE(MAX(numeroEnBiblioteca), 0) + 1 AS n FROM socios WHERE bibliotecaId = ?'
+            ).get(socioData.bibliotecaId).n;
+
+            console.log('📝 Insertando socio:', socioData.nombre, 'con email:', emailNormalizado, 'numeroEnBiblioteca:', nextNumeroEnBiblioteca);
 
             const stmt = this.db.prepare(`
-                INSERT INTO socios (nombre, email, telefono, direccion, estado, observaciones, bibliotecaId)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO socios (numeroEnBiblioteca, nombre, email, telefono, direccion, estado, observaciones, bibliotecaId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             const result = stmt.run(
+                nextNumeroEnBiblioteca,
                 socioData.nombre,
                 emailNormalizado,
                 socioData.telefono || null,
@@ -1037,7 +1103,7 @@ class DatabaseService {
 
     async updateSocio(id, updates) {
         try {
-            // Si se está actualizando el email, validar que sea único
+            // Si se está actualizando el email, validar que sea único dentro de la misma biblioteca
             if (updates.email !== undefined) {
                 // Validar formato del email
                 if (!Validators.validateEmail(updates.email)) {
@@ -1047,11 +1113,15 @@ class DatabaseService {
                 // Normalizar email
                 const emailNormalizado = updates.email.toLowerCase().trim();
 
-                // Verificar que no exista otro socio con ese email
-                const existingSocio = this.db.prepare('SELECT numeroDeSocio FROM socios WHERE LOWER(TRIM(email)) = ? AND numeroDeSocio != ?').get(emailNormalizado, id);
+                // Obtener la biblioteca del socio que se está editando
+                const currentSocio = this.db.prepare('SELECT bibliotecaId FROM socios WHERE numeroDeSocio = ?').get(id);
+                if (!currentSocio) throw new Error('Socio no encontrado');
+
+                // Verificar que no exista otro socio con ese email en la misma biblioteca (excluyendo el actual)
+                const existingSocio = this.db.prepare('SELECT numeroDeSocio FROM socios WHERE LOWER(TRIM(email)) = ? AND bibliotecaId = ? AND numeroDeSocio != ?').get(emailNormalizado, currentSocio.bibliotecaId, id);
 
                 if (existingSocio) {
-                    throw new Error(`Ya existe un socio con el email "${updates.email}". El email debe ser único.`);
+                    throw new Error(`Ya existe un socio con el email "${updates.email}" en esta biblioteca. El email debe ser único dentro de la biblioteca.`);
                 }
 
                 // Normalizar el email en updates también
