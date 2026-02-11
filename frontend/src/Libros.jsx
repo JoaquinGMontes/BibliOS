@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import './libros.css';
 import Navbar from './Navbar.jsx';
+import AppModal from './components/AppModal.jsx';
 import { buscarLibroPorTitulo, buscarLibroPorISBN } from './utils/openLibraryAPI.js';
 
 export default function Libros() {
@@ -23,6 +24,7 @@ export default function Libros() {
   const [libroToEdit, setLibroToEdit] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [isSearching, setIsSearching] = useState(false);
+  const [isbnErrorModal, setIsbnErrorModal] = useState({ open: false, title: '', message: '', detail: '' });
 
   // Estado del formulario (Estructura MARC)
   const [formData, setFormData] = useState({
@@ -273,10 +275,20 @@ export default function Libros() {
       setShowForm(false);
     } catch (error) {
       console.error('Error al crear libro:', error);
-      await window.nativeDialog.error({
-        message: 'Error al crear libro',
-        detail: error.message
-      });
+      const msg = error?.message || '';
+      if (msg.toLowerCase().includes('isbn')) {
+        setIsbnErrorModal({
+          open: true,
+          title: 'ISBN inválido',
+          message: 'El ISBN proporcionado no es válido.',
+          detail: 'Debe ser ISBN-10 o ISBN-13. Revisá el formato e intentá nuevamente.'
+        });
+      } else {
+        await window.nativeDialog.error({
+          message: 'Error al crear libro',
+          detail: error.message
+        });
+      }
     }
   };
 
@@ -397,10 +409,20 @@ export default function Libros() {
       setEditFormData({});
     } catch (error) {
       console.error('Error al actualizar libro:', error);
-      await window.nativeDialog.error({
-        message: 'Error al actualizar libro',
-        detail: error.message
-      });
+      const msg = error?.message || '';
+      if (msg.toLowerCase().includes('isbn')) {
+        setIsbnErrorModal({
+          open: true,
+          title: 'ISBN inválido',
+          message: 'El ISBN proporcionado no es válido.',
+          detail: 'Debe ser ISBN-10 o ISBN-13. Revisá el formato e intentá nuevamente.'
+        });
+      } else {
+        await window.nativeDialog.error({
+          message: 'Error al actualizar libro',
+          detail: error.message
+        });
+      }
     }
   };
 
@@ -1404,6 +1426,16 @@ export default function Libros() {
           </div>
         )}
       </div>
+
+      <AppModal
+        open={isbnErrorModal.open}
+        onClose={() => setIsbnErrorModal(prev => ({ ...prev, open: false }))}
+        type="error"
+        title={isbnErrorModal.title}
+        message={isbnErrorModal.message}
+        detail={isbnErrorModal.detail}
+        buttonText="Aceptar"
+      />
     </>
   );
 } 

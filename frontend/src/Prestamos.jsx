@@ -51,7 +51,7 @@ export default function Prestamos() {
           const librosFormateados = librosReales.map(libro => ({
             id: libro.id,
             titulo: libro.titulo,
-            autor: libro.autor,
+            autor: libro.mainAuthor ?? libro.autor ?? '',
             isbn: libro.isbn || '',
             categoria: libro.categoria || '',
             disponible: libro.disponibles > 0
@@ -62,6 +62,7 @@ export default function Prestamos() {
           const sociosFormateados = sociosReales.map(socio => ({
             id: socio.numeroDeSocio ?? socio.id,
             numeroDeSocio: socio.numeroDeSocio ?? socio.id,
+            numeroEnBiblioteca: socio.numeroEnBiblioteca ?? socio.numeroDeSocio ?? socio.id,
             nombre: socio.nombre,
             email: socio.email || '',
             telefono: socio.telefono || '',
@@ -172,7 +173,7 @@ export default function Prestamos() {
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(`Nº ${socio.numeroDeSocio ?? socio.id} - ${socio.nombre || ''}`);
+    setSocioSearch(`Nº ${socio.numeroEnBiblioteca ?? socio.numeroDeSocio ?? socio.id} - ${socio.nombre || ''}`);
     setShowSocioResults(false);
     setFormData(prev => ({ ...prev, socioId: socio.id }));
   };
@@ -191,7 +192,7 @@ export default function Prestamos() {
     if (!socio.activo) return false;
 
     const search = (socioSearch || '').toLowerCase().trim();
-    const numeroStr = String(socio.numeroDeSocio ?? socio.id ?? '');
+    const numeroStr = String(socio.numeroEnBiblioteca ?? socio.numeroDeSocio ?? socio.id ?? '');
     const nombre = (socio.nombre || '').toLowerCase();
 
     return numeroStr.includes(search) || nombre.includes(search);
@@ -546,7 +547,7 @@ export default function Prestamos() {
                           >
                             <User size={16} />
                             <div>
-                              <strong>Nº {socio.numeroDeSocio ?? socio.id}</strong>
+                              <strong>Nº {socio.numeroEnBiblioteca ?? socio.numeroDeSocio ?? socio.id}</strong>
                               <span> — {socio.nombre}</span>
                             </div>
                           </div>
