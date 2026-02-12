@@ -23,6 +23,7 @@ export default function Socios() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedSocio, setSelectedSocio] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -40,6 +41,24 @@ export default function Socios() {
     fechaRegistro: '',
     observaciones: ''
   });
+
+  // Sync with DataContext
+  useEffect(() => {
+    if (sociosRaw && prestamos) {
+      const sociosWithStats = sociosRaw.map(socio => {
+        const socioPrestamos = prestamos.filter(p => p.socioId === socio.id);
+        const activos = socioPrestamos.filter(p => p.estado === 'activo' || p.estado === 'vencido').length;
+        const totales = socioPrestamos.length;
+
+        return {
+          ...socio,
+          prestamosActivos: activos,
+          prestamosTotales: totales
+        };
+      });
+      setSocios(sociosWithStats);
+    }
+  }, [sociosRaw, prestamos]);
 
 
 
@@ -314,7 +333,7 @@ export default function Socios() {
             <form onSubmit={handleSubmit} className="socio-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="nombre">Nombre Completo *</label>
+                  <label htmlFor="nombre">Nombre Completo <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text"
                     id="nombre"
@@ -326,7 +345,7 @@ export default function Socios() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="email">Email *</label>
+                  <label htmlFor="email">Email <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="email"
                     id="email"
@@ -401,16 +420,47 @@ export default function Socios() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="filter-box">
+          <div className="filter-box custom-dropdown">
             <Filter size={16} />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+            <div
+              className="dropdown-trigger"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
             >
-              <option value="todos">Todos los estados</option>
-              <option value="activo">Activos</option>
-              <option value="inactivo">Inactivos</option>
-            </select>
+              {filterStatus === 'todos' && 'Todos los estados'}
+              {filterStatus === 'activo' && 'Activos'}
+              {filterStatus === 'inactivo' && 'Inactivos'}
+              <span className="dropdown-arrow">▼</span>
+            </div>
+
+            {showFilterDropdown && (
+              <div className="dropdown-menu">
+                <div
+                  className={`dropdown-item ${filterStatus === 'todos' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('todos'); setShowFilterDropdown(false); }}
+                >
+                  Todos los estados
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'activo' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('activo'); setShowFilterDropdown(false); }}
+                >
+                  Activos
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'inactivo' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('inactivo'); setShowFilterDropdown(false); }}
+                >
+                  Inactivos
+                </div>
+              </div>
+            )}
+            {/* Backdrop to close dropdown */}
+            {showFilterDropdown && (
+              <div
+                className="dropdown-backdrop"
+                onClick={() => setShowFilterDropdown(false)}
+              />
+            )}
           </div>
         </div>
 
@@ -424,6 +474,7 @@ export default function Socios() {
             <table className="socios-table">
               <thead>
                 <tr>
+                  <th>Nº Socio</th>
                   <th>Socio</th>
                   <th>Contacto</th>
                   <th>Fecha Registro</th>
@@ -436,9 +487,12 @@ export default function Socios() {
                 {filteredSocios.map(socio => {
                   return (
                     <tr key={socio.id}>
+                      <td className="id-cell">#{socio.id}</td>
                       <td>
                         <div className="socio-info">
-                          <User size={16} />
+                          <div className="socio-avatar">
+                            <User size={16} />
+                          </div>
                           <div>
                             <strong>{socio.nombre}</strong>
                             {socio.direccion && (
@@ -639,7 +693,7 @@ export default function Socios() {
                 <form onSubmit={handleUpdateSubmit} className="socio-form">
                   <div className="form-row">
                     <div className="form-group">
-                      <label htmlFor="edit-nombre">Nombre Completo *</label>
+                      <label htmlFor="edit-nombre">Nombre Completo <span style={{ color: "#ef4444" }}>*</span></label>
                       <input
                         type="text"
                         id="edit-nombre"
@@ -651,7 +705,7 @@ export default function Socios() {
                       />
                     </div>
                     <div className="form-group">
-                      <label htmlFor="edit-email">Email *</label>
+                      <label htmlFor="edit-email">Email <span style={{ color: "#ef4444" }}>*</span></label>
                       <input
                         type="email"
                         id="edit-email"

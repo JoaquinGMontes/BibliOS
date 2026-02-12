@@ -852,3 +852,22 @@ button:hover {
 .confirm-btn.delete:hover {
   background: #dc2626;
 }
+
+.socio-avatar {
+  background: var(--bg-hover);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.id-cell {
+  font-family: monospace;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  font-weight: 500;
+}

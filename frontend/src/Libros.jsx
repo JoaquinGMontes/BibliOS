@@ -25,6 +25,7 @@ export default function Libros() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedLibro, setSelectedLibro] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -41,8 +42,12 @@ export default function Libros() {
     isbn: '',
     categoria: '',
     editorial: '',
+    lugarPublicacion: '',
     anioPublicacion: '',
+    edicion: '',
     cantidad: '',
+    paginas: '',
+    clasificacion: '', // CDU/Dewey
     ubicacion: '',
     descripcion: ''
   });
@@ -61,8 +66,12 @@ export default function Libros() {
           isbn: libro.isbn || '',
           categoria: libro.categoria || '',
           editorial: libro.editorial || '',
+          lugarPublicacion: libro.lugarPublicacion || '',
           anioPublicacion: libro.anioPublicacion || '',
+          edicion: libro.edicion || '',
           cantidad: libro.cantidad || 1,
+          paginas: libro.paginas || '',
+          clasificacion: libro.clasificacion || '',
           disponibles: libro.disponibles || 0,
           prestamosTotales: prestamosLibro.length,
           ubicacion: libro.ubicacion || '',
@@ -129,8 +138,11 @@ export default function Libros() {
           autor: libroEncontrado.autor || prev.autor,
           isbn: libroEncontrado.isbn || prev.isbn,
           categoria: libroEncontrado.categoria || prev.categoria,
+          categoria: libroEncontrado.categoria || prev.categoria,
           editorial: libroEncontrado.editorial || prev.editorial,
+          lugarPublicacion: libroEncontrado.publish_places?.[0] || prev.lugarPublicacion,
           anioPublicacion: libroEncontrado.anioPublicacion || prev.anioPublicacion,
+          paginas: libroEncontrado.number_of_pages?.toString() || prev.paginas,
           descripcion: libroEncontrado.descripcion || prev.descripcion
         }));
 
@@ -179,8 +191,12 @@ export default function Libros() {
           isbn: formData.isbn || null,
           categoria: formData.categoria || null,
           editorial: formData.editorial || null,
+          lugarPublicacion: formData.lugarPublicacion || null,
           anioPublicacion: formData.anioPublicacion ? parseInt(formData.anioPublicacion) : null,
+          edicion: formData.edicion || null,
           cantidad: parseInt(formData.cantidad) || 1,
+          paginas: formData.paginas ? parseInt(formData.paginas) : null,
+          clasificacion: formData.clasificacion || null,
           ubicacion: formData.ubicacion || null,
           descripcion: formData.descripcion || null,
           bibliotecaId: library.id
@@ -210,8 +226,12 @@ export default function Libros() {
         isbn: '',
         categoria: '',
         editorial: '',
+        lugarPublicacion: '',
         anioPublicacion: '',
+        edicion: '',
         cantidad: '',
+        paginas: '',
+        clasificacion: '',
         ubicacion: '',
         descripcion: ''
       });
@@ -266,8 +286,12 @@ export default function Libros() {
       isbn: libro.isbn || '',
       categoria: libro.categoria || '',
       editorial: libro.editorial || '',
+      lugarPublicacion: libro.lugarPublicacion || '',
       anioPublicacion: libro.anioPublicacion || '',
+      edicion: libro.edicion || '',
       cantidad: libro.cantidad || 1,
+      paginas: libro.paginas || '',
+      clasificacion: libro.clasificacion || '',
       ubicacion: libro.ubicacion || '',
       descripcion: libro.descripcion || ''
     });
@@ -299,8 +323,12 @@ export default function Libros() {
           isbn: editFormData.isbn || null,
           categoria: editFormData.categoria || null,
           editorial: editFormData.editorial || null,
+          lugarPublicacion: editFormData.lugarPublicacion || null,
           anioPublicacion: editFormData.anioPublicacion ? parseInt(editFormData.anioPublicacion) : null,
+          edicion: editFormData.edicion || null,
           cantidad: parseInt(editFormData.cantidad) || 1,
+          paginas: editFormData.paginas ? parseInt(editFormData.paginas) : null,
+          clasificacion: editFormData.clasificacion || null,
           ubicacion: editFormData.ubicacion || null,
           descripcion: editFormData.descripcion || null
         });
@@ -416,7 +444,7 @@ export default function Libros() {
             <form onSubmit={handleSubmit} className="libro-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="titulo">Título *</label>
+                  <label htmlFor="titulo">Título <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text"
                     id="titulo"
@@ -428,7 +456,7 @@ export default function Libros() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="autor">Autor *</label>
+                  <label htmlFor="autor">Autor <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text"
                     id="autor"
@@ -463,21 +491,7 @@ export default function Libros() {
                 </div>
               </div>
 
-              {/* Botón de búsqueda automática */}
-              <div className="auto-search-section">
-                <button
-                  type="button"
-                  className="auto-search-button"
-                  onClick={handleAutoSearch}
-                  disabled={isSearching}
-                >
-                  <Zap size={16} />
-                  {isSearching ? 'Buscando...' : 'Buscar Automáticamente'}
-                </button>
-                <p className="auto-search-hint">
-                  Ingresa el ISBN y haz clic para llenar automáticamente los datos del libro
-                </p>
-              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="editorial">Editorial</label>
@@ -491,7 +505,19 @@ export default function Libros() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="anioPublicacion">Año de Publicación</label>
+                  <label htmlFor="lugarPublicacion">Lugar de Pub.</label>
+                  <input
+                    type="text"
+                    id="lugarPublicacion"
+                    name="lugarPublicacion"
+                    value={formData.lugarPublicacion}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                    placeholder="Ej: Madrid"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="anioPublicacion">Año</label>
                   <input
                     type="number"
                     id="anioPublicacion"
@@ -504,7 +530,22 @@ export default function Libros() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="cantidad">Cantidad de Ejemplares *</label>
+                  <label htmlFor="edicion">Edición</label>
+                  <input
+                    type="text"
+                    id="edicion"
+                    name="edicion"
+                    value={formData.edicion}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                    placeholder="Ej: 3a. ed."
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="cantidad">Cantidad <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="number"
                     id="cantidad"
@@ -514,6 +555,30 @@ export default function Libros() {
                     onClick={handleInputClick}
                     required
                     min="1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="paginas">Páginas</label>
+                  <input
+                    type="text"
+                    id="paginas"
+                    name="paginas"
+                    value={formData.paginas}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                    placeholder="Ej: 350 p."
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="clasificacion">Clasificación</label>
+                  <input
+                    type="text"
+                    id="clasificacion"
+                    name="clasificacion"
+                    value={formData.clasificacion}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                    placeholder="CDU / Dewey"
                   />
                 </div>
                 <div className="form-group">
@@ -542,6 +607,24 @@ export default function Libros() {
                   />
                 </div>
               </div>
+
+              {/* Botón de búsqueda automática moved here */}
+              <div className="auto-search-section" style={{ marginTop: '1rem', marginBottom: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="auto-search-button"
+                  onClick={handleAutoSearch}
+                  disabled={isSearching}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  <Zap size={16} />
+                  {isSearching ? 'Buscando...' : 'Buscar datos por ISBN'}
+                </button>
+                <p className="auto-search-hint" style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                  Si ingresaste un ISBN, haz clic aquí para completar los datos automáticamente.
+                </p>
+              </div>
+
               <div className="libros-form-actions">
                 <button type="submit" className="submit-button">
                   <Plus size={16} />
@@ -556,8 +639,9 @@ export default function Libros() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
+          </div >
+        )
+        }
 
         {/* Filtros y búsqueda */}
         <div className="filters-section">
@@ -570,17 +654,54 @@ export default function Libros() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="filter-box">
+          <div className="filter-box custom-dropdown">
             <Filter size={16} />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+            <div
+              className="dropdown-trigger"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
             >
-              <option value="todos">Todos los estados</option>
-              <option value="disponible">Disponibles</option>
-              <option value="prestado">Prestados</option>
-              <option value="mantenimiento">En mantenimiento</option>
-            </select>
+              {filterStatus === 'todos' && 'Todos los estados'}
+              {filterStatus === 'disponible' && 'Disponibles'}
+              {filterStatus === 'prestado' && 'Prestados'}
+              {filterStatus === 'mantenimiento' && 'En mantenimiento'}
+              <span className="dropdown-arrow">▼</span>
+            </div>
+
+            {showFilterDropdown && (
+              <div className="dropdown-menu">
+                <div
+                  className={`dropdown-item ${filterStatus === 'todos' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('todos'); setShowFilterDropdown(false); }}
+                >
+                  Todos los estados
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'disponible' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('disponible'); setShowFilterDropdown(false); }}
+                >
+                  Disponibles
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'prestado' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('prestado'); setShowFilterDropdown(false); }}
+                >
+                  Prestados
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'mantenimiento' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('mantenimiento'); setShowFilterDropdown(false); }}
+                >
+                  En mantenimiento
+                </div>
+              </div>
+            )}
+            {/* Backdrop to close dropdown */}
+            {showFilterDropdown && (
+              <div
+                className="dropdown-backdrop"
+                onClick={() => setShowFilterDropdown(false)}
+              />
+            )}
           </div>
         </div>
 
@@ -708,266 +829,342 @@ export default function Libros() {
         </div>
 
         {/* Modal de detalles */}
-        {showDetails && selectedLibro && (
-          <div className="modal-overlay" onClick={() => setShowDetails(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Detalles del Libro #{selectedLibro.id}</h3>
-                <button
-                  className="close-button"
-                  onClick={() => setShowDetails(false)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="detail-row">
-                  <span className="label">Título:</span>
-                  <span className="value">{selectedLibro.titulo}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Autor:</span>
-                  <span className="value">{selectedLibro.autor}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">ISBN:</span>
-                  <span className="value">{selectedLibro.isbn || 'No especificado'}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Categoría:</span>
-                  <span className="value">{selectedLibro.categoria || 'No especificada'}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Editorial:</span>
-                  <span className="value">{selectedLibro.editorial || 'No especificada'}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Año de Publicación:</span>
-                  <span className="value">{selectedLibro.anioPublicacion}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Cantidad Total:</span>
-                  <span className="value">{selectedLibro.cantidad} ejemplares</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Disponibles:</span>
-                  <span className="value">{selectedLibro.disponibles} ejemplares</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Prestados:</span>
-                  <span className="value">{selectedLibro.cantidad - selectedLibro.disponibles} ejemplares</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Total de Préstamos:</span>
-                  <span className="value">{selectedLibro.prestamosTotales}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="label">Estado:</span>
-                  <span
-                    className="value status-badge"
-                    style={{ backgroundColor: getEstadoColor(selectedLibro.estado) }}
+        {
+          showDetails && selectedLibro && (
+            <div className="modal-overlay" onClick={() => setShowDetails(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Detalles del Libro #{selectedLibro.id}</h3>
+                  <button
+                    className="close-button"
+                    onClick={() => setShowDetails(false)}
                   >
-                    {selectedLibro.estado}
-                  </span>
+                    ×
+                  </button>
                 </div>
-                <div className="detail-row">
-                  <span className="label">Ubicación:</span>
-                  <span className="value">{selectedLibro.ubicacion || 'No especificada'}</span>
-                </div>
-                {selectedLibro.descripcion && (
+                <div className="modal-body">
                   <div className="detail-row">
-                    <span className="label">Descripción:</span>
-                    <span className="value">{selectedLibro.descripcion}</span>
+                    <span className="label">Título:</span>
+                    <span className="value">{selectedLibro.titulo}</span>
                   </div>
-                )}
+                  <div className="detail-row">
+                    <span className="label">Autor:</span>
+                    <span className="value">{selectedLibro.autor}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">ISBN:</span>
+                    <span className="value">{selectedLibro.isbn || 'No especificado'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Categoría:</span>
+                    <span className="value">{selectedLibro.categoria || 'No especificada'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Editorial:</span>
+                    <span className="value">{selectedLibro.editorial || 'No especificada'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Año de Publicación:</span>
+                    <span className="value">{selectedLibro.anioPublicacion}</span>
+                  </div>
+                  {selectedLibro.lugarPublicacion && (
+                    <div className="detail-row">
+                      <span className="label">Lugar de Pub.:</span>
+                      <span className="value">{selectedLibro.lugarPublicacion}</span>
+                    </div>
+                  )}
+                  {selectedLibro.edicion && (
+                    <div className="detail-row">
+                      <span className="label">Edición:</span>
+                      <span className="value">{selectedLibro.edicion}</span>
+                    </div>
+                  )}
+                  <div className="detail-row">
+                    <span className="label">Cantidad Total:</span>
+                    <span className="value">{selectedLibro.cantidad} ejemplares</span>
+                  </div>
+                  {selectedLibro.paginas && (
+                    <div className="detail-row">
+                      <span className="label">Páginas:</span>
+                      <span className="value">{selectedLibro.paginas}</span>
+                    </div>
+                  )}
+                  {selectedLibro.clasificacion && (
+                    <div className="detail-row">
+                      <span className="label">Clasificación:</span>
+                      <span className="value">{selectedLibro.clasificacion}</span>
+                    </div>
+                  )}
+                  <div className="detail-row">
+                    <span className="label">Disponibles:</span>
+                    <span className="value">{selectedLibro.disponibles} ejemplares</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Prestados:</span>
+                    <span className="value">{selectedLibro.cantidad - selectedLibro.disponibles} ejemplares</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Total de Préstamos:</span>
+                    <span className="value">{selectedLibro.prestamosTotales}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Estado:</span>
+                    <span
+                      className="value status-badge"
+                      style={{ backgroundColor: getEstadoColor(selectedLibro.estado) }}
+                    >
+                      {selectedLibro.estado}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Ubicación:</span>
+                    <span className="value">{selectedLibro.ubicacion || 'No especificada'}</span>
+                  </div>
+                  {selectedLibro.descripcion && (
+                    <div className="detail-row">
+                      <span className="label">Descripción:</span>
+                      <span className="value">{selectedLibro.descripcion}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Modal de confirmación de eliminación */}
-        {showDeleteConfirm && (
-          <div className="modal-overlay" onClick={cancelDelete}>
-            <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Confirmar Eliminación</h3>
-                <button
-                  className="close-button"
-                  onClick={cancelDelete}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="confirm-message">
-                  <AlertTriangle size={24} color="#ef4444" />
-                  <p>¿Estás seguro de que quieres eliminar este libro?</p>
-                  <p className="confirm-warning">Esta acción no se puede deshacer.</p>
-                </div>
-                <div className="confirm-actions">
+        {
+          showDeleteConfirm && (
+            <div className="modal-overlay" onClick={cancelDelete}>
+              <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Confirmar Eliminación</h3>
                   <button
-                    className="confirm-btn cancel"
+                    className="close-button"
                     onClick={cancelDelete}
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    className="confirm-btn delete"
-                    onClick={confirmDelete}
-                  >
-                    Eliminar
+                    ×
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de edición */}
-        {showEditModal && libroToEdit && (
-          <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Editar Libro #{libroToEdit.id}</h3>
-                <button
-                  className="close-button"
-                  onClick={() => setShowEditModal(false)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="modal-body">
-                <form onSubmit={handleUpdateSubmit} className="libro-form">
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="edit-titulo">Título *</label>
-                      <input
-                        type="text"
-                        id="edit-titulo"
-                        name="titulo"
-                        value={editFormData.titulo}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-autor">Autor *</label>
-                      <input
-                        type="text"
-                        id="edit-autor"
-                        name="autor"
-                        value={editFormData.autor}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-isbn">ISBN</label>
-                      <input
-                        type="text"
-                        id="edit-isbn"
-                        name="isbn"
-                        value={editFormData.isbn}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-categoria">Categoría</label>
-                      <input
-                        type="text"
-                        id="edit-categoria"
-                        name="categoria"
-                        value={editFormData.categoria}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                      />
-                    </div>
+                <div className="modal-body">
+                  <div className="confirm-message">
+                    <AlertTriangle size={24} color="#ef4444" />
+                    <p>¿Estás seguro de que quieres eliminar este libro?</p>
+                    <p className="confirm-warning">Esta acción no se puede deshacer.</p>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="edit-editorial">Editorial</label>
-                      <input
-                        type="text"
-                        id="edit-editorial"
-                        name="editorial"
-                        value={editFormData.editorial}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-anioPublicacion">Año de Publicación</label>
-                      <input
-                        type="number"
-                        id="edit-anioPublicacion"
-                        name="anioPublicacion"
-                        value={editFormData.anioPublicacion}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-cantidad">Cantidad Total</label>
-                      <input
-                        type="number"
-                        id="edit-cantidad"
-                        name="cantidad"
-                        value={editFormData.cantidad}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                        min="1"
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="edit-ubicacion">Ubicación</label>
-                      <input
-                        type="text"
-                        id="edit-ubicacion"
-                        name="ubicacion"
-                        value={editFormData.ubicacion}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group full-width">
-                      <label htmlFor="edit-descripcion">Descripción</label>
-                      <textarea
-                        id="edit-descripcion"
-                        name="descripcion"
-                        value={editFormData.descripcion}
-                        onChange={handleEditInputChange}
-                        onClick={handleEditInputClick}
-                        rows="3"
-                      />
-                    </div>
-                  </div>
-                  <div className="form-actions">
+                  <div className="confirm-actions">
                     <button
-                      type="button"
-                      className="cancel-btn"
-                      onClick={() => setShowEditModal(false)}
+                      className="confirm-btn cancel"
+                      onClick={cancelDelete}
                     >
                       Cancelar
                     </button>
                     <button
-                      type="submit"
-                      className="submit-btn"
+                      className="confirm-btn delete"
+                      onClick={confirmDelete}
                     >
-                      Guardar Cambios
+                      Eliminar
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )
+        }
+
+        {/* Modal de edición */}
+        {
+          showEditModal && libroToEdit && (
+            <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Editar Libro #{libroToEdit.id}</h3>
+                  <button
+                    className="close-button"
+                    onClick={() => setShowEditModal(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleUpdateSubmit} className="libro-form">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="edit-titulo">Título *</label>
+                        <input
+                          type="text"
+                          id="edit-titulo"
+                          name="titulo"
+                          value={editFormData.titulo}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-autor">Autor *</label>
+                        <input
+                          type="text"
+                          id="edit-autor"
+                          name="autor"
+                          value={editFormData.autor}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-isbn">ISBN</label>
+                        <input
+                          type="text"
+                          id="edit-isbn"
+                          name="isbn"
+                          value={editFormData.isbn}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-categoria">Categoría</label>
+                        <input
+                          type="text"
+                          id="edit-categoria"
+                          name="categoria"
+                          value={editFormData.categoria}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="edit-editorial">Editorial</label>
+                        <input
+                          type="text"
+                          id="edit-editorial"
+                          name="editorial"
+                          value={editFormData.editorial}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-lugarPublicacion">Lugar Pub.</label>
+                        <input
+                          type="text"
+                          id="edit-lugarPublicacion"
+                          name="lugarPublicacion"
+                          value={editFormData.lugarPublicacion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-anioPublicacion">Año</label>
+                        <input
+                          type="number"
+                          id="edit-anioPublicacion"
+                          name="anioPublicacion"
+                          value={editFormData.anioPublicacion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-edicion">Edición</label>
+                        <input
+                          type="text"
+                          id="edit-edicion"
+                          name="edicion"
+                          value={editFormData.edicion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="edit-cantidad">Cantidad *</label>
+                        <input
+                          type="number"
+                          id="edit-cantidad"
+                          name="cantidad"
+                          value={editFormData.cantidad}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                          required
+                          min="1"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-paginas">Páginas</label>
+                        <input
+                          type="text"
+                          id="edit-paginas"
+                          name="paginas"
+                          value={editFormData.paginas}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-clasificacion">Clasificación</label>
+                        <input
+                          type="text"
+                          id="edit-clasificacion"
+                          name="clasificacion"
+                          value={editFormData.clasificacion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-ubicacion">Ubicación</label>
+                        <input
+                          type="text"
+                          id="edit-ubicacion"
+                          name="ubicacion"
+                          value={editFormData.ubicacion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group full-width">
+                        <label htmlFor="edit-descripcion">Descripción</label>
+                        <textarea
+                          id="edit-descripcion"
+                          name="descripcion"
+                          value={editFormData.descripcion}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                          rows="3"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="cancel-btn"
+                        onClick={() => setShowEditModal(false)}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="submit-btn"
+                      >
+                        Guardar Cambios
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )
+        }
+      </div >
     </>
   );
 } 

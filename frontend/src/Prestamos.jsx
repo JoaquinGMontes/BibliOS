@@ -24,6 +24,7 @@ export default function Prestamos() {
   const [socios, setSocios] = useState([]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   // Update local formatted state when context data changes
@@ -164,7 +165,7 @@ export default function Prestamos() {
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(socio.nombre);
+    setSocioSearch(`${socio.nombre} - ${socio.id}`);
     setShowSocioResults(false);
     setFormData({ ...formData, socioId: socio.id });
   };
@@ -176,8 +177,9 @@ export default function Prestamos() {
   );
 
   const filteredSocios = socios.filter(socio =>
-    socio.activo &&
-    socio.nombre.toLowerCase().includes(socioSearch.toLowerCase())
+    (socio.estado === 'activo' || socio.activo) &&
+    (socio.nombre.toLowerCase().includes(socioSearch.toLowerCase()) ||
+      socio.id.toString().includes(socioSearch))
   );
 
   // Manejo del formulario
@@ -432,7 +434,7 @@ export default function Prestamos() {
             <form onSubmit={handleSubmit} className="prestamo-form">
               <div className="form-row">
                 <div className="form-group searchable-dropdown">
-                  <label htmlFor="libroId">Libro *</label>
+                  <label htmlFor="libroId">Libro <span style={{ color: "#ef4444" }}>*</span></label>
                   <div className="search-wrapper">
                     <input
                       type="text"
@@ -463,7 +465,7 @@ export default function Prestamos() {
                   </div>
                 </div>
                 <div className="form-group searchable-dropdown">
-                  <label htmlFor="socioId">Socio *</label>
+                  <label htmlFor="socioId">Socio <span style={{ color: "#ef4444" }}>*</span></label>
                   <div className="search-wrapper">
                     <input
                       type="text"
@@ -483,7 +485,7 @@ export default function Prestamos() {
                             onClick={() => selectSocio(socio)}
                           >
                             <User size={16} />
-                            <span>{socio.nombre}</span>
+                            <span>{socio.nombre} - {socio.id}</span>
                           </div>
                         ))}
                       </div>
@@ -491,7 +493,7 @@ export default function Prestamos() {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="fechaPrestamo">Fecha Préstamo *</label>
+                  <label htmlFor="fechaPrestamo">Fecha Préstamo <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="date"
                     name="fechaPrestamo"
@@ -503,7 +505,7 @@ export default function Prestamos() {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="fechaDevolucion">Fecha Devolución *</label>
+                  <label htmlFor="fechaDevolucion">Fecha Devolución <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="date"
                     name="fechaDevolucion"
@@ -553,17 +555,54 @@ export default function Prestamos() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="filter-box">
+          <div className="filter-box custom-dropdown">
             <Filter size={18} />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+            <div
+              className="dropdown-trigger"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
             >
-              <option value="todos">Todos los estados</option>
-              <option value="activo">Activos</option>
-              <option value="vencido">Vencidos</option>
-              <option value="completado">Completados</option>
-            </select>
+              {filterStatus === 'todos' && 'Todos los estados'}
+              {filterStatus === 'activo' && 'Activos'}
+              {filterStatus === 'vencido' && 'Vencidos'}
+              {filterStatus === 'completado' && 'Completados'}
+              <span className="dropdown-arrow">▼</span>
+            </div>
+
+            {showFilterDropdown && (
+              <div className="dropdown-menu">
+                <div
+                  className={`dropdown-item ${filterStatus === 'todos' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('todos'); setShowFilterDropdown(false); }}
+                >
+                  Todos los estados
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'activo' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('activo'); setShowFilterDropdown(false); }}
+                >
+                  Activos
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'vencido' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('vencido'); setShowFilterDropdown(false); }}
+                >
+                  Vencidos
+                </div>
+                <div
+                  className={`dropdown-item ${filterStatus === 'completado' ? 'active' : ''}`}
+                  onClick={() => { setFilterStatus('completado'); setShowFilterDropdown(false); }}
+                >
+                  Completados
+                </div>
+              </div>
+            )}
+            {/* Backdrop to close dropdown */}
+            {showFilterDropdown && (
+              <div
+                className="dropdown-backdrop"
+                onClick={() => setShowFilterDropdown(false)}
+              />
+            )}
           </div>
         </div>
 
