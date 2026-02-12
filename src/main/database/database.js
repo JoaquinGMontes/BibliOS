@@ -304,46 +304,58 @@ class DatabaseService {
                 if (needsMigration) {
                     console.log('Migrando tabla préstamos: cambiando CASCADE a SET NULL...');
 
-                    // Crear tabla temporal con la nueva estructura
-                    this.db.exec(`
-                        CREATE TABLE prestamos_new (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            libroId INTEGER,
-                            socioId INTEGER,
-                            bibliotecaId INTEGER,
-                            fechaPrestamo DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            fechaDevolucion DATETIME,
-                            fechaDevolucionReal DATETIME,
-                            estado TEXT DEFAULT 'activo',
-                            observaciones TEXT,
-                            FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
-                            FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
-                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
-                        )
-                    `);
+                    // Verificar si existe la columna numero para preservarla
+                    const columns = this.db.prepare("PRAGMA table_info(prestamos)").all();
+                    const hasNumero = columns.some(c => c.name === 'numero');
 
-                    // Copiar datos existentes
-                    this.db.exec(`
-                        INSERT INTO prestamos_new (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones)
-                        SELECT id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones
-                        FROM prestamos
-                    `);
+                    const numeroColDef = hasNumero ? 'numero INTEGER,' : '';
+                    const uniqueConstraint = hasNumero ? ', UNIQUE(numero, bibliotecaId)' : '';
+                    const numeroInsertCol = hasNumero ? ', numero' : '';
 
-                    // Eliminar tabla antigua
-                    this.db.exec('DROP TABLE prestamos');
+                    this.db.transaction(() => {
+                        // Crear tabla temporal con la nueva estructura
+                        this.db.exec(`
+                            CREATE TABLE prestamos_new (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                libroId INTEGER,
+                                socioId INTEGER,
+                                bibliotecaId INTEGER,
+                                fechaPrestamo DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                fechaDevolucion DATETIME,
+                                fechaDevolucionReal DATETIME,
+                                estado TEXT DEFAULT 'activo',
+                                observaciones TEXT,
+                                ${numeroColDef}
+                                FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
+                                FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
+                                FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                                ${uniqueConstraint}
+                            )
+                        `);
 
-                    // Renombrar tabla nueva
-                    this.db.exec('ALTER TABLE prestamos_new RENAME TO prestamos');
+                        // Copiar datos existentes
+                        this.db.exec(`
+                            INSERT INTO prestamos_new (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones${numeroInsertCol})
+                            SELECT id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones${numeroInsertCol}
+                            FROM prestamos
+                        `);
 
-                    // Recrear índices
-                    this.db.exec(`
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_biblioteca ON prestamos(bibliotecaId);
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_libro ON prestamos(libroId);
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_socio ON prestamos(socioId);
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_fecha ON prestamos(fechaPrestamo);
-                        CREATE INDEX IF NOT EXISTS idx_prestamos_devolucion ON prestamos(fechaDevolucion);
-                    `);
+                        // Eliminar tabla antigua
+                        this.db.exec('DROP TABLE prestamos');
+
+                        // Renombrar tabla nueva
+                        this.db.exec('ALTER TABLE prestamos_new RENAME TO prestamos');
+
+                        // Recrear índices
+                        this.db.exec(`
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_biblioteca ON prestamos(bibliotecaId);
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_libro ON prestamos(libroId);
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_socio ON prestamos(socioId);
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_fecha ON prestamos(fechaPrestamo);
+                            CREATE INDEX IF NOT EXISTS idx_prestamos_devolucion ON prestamos(fechaDevolucion);
+                        `);
+                    })();
 
                     console.log('Migración completada: préstamos ahora mantienen historial al eliminar libros/socios');
                 } else {
@@ -558,13 +570,10 @@ class DatabaseService {
                 hasNullNumero = nullCheck.count > 0;
             }
 
-            if (!hasNumeroCol || hasNullNumero) {
-                console.log('Migrando tabla prestamos: agregando/corrigiendo números secuenciales por biblioteca...');
+            if (!hasNumeroCol) {
+                console.log('Migrando tabla prestamos: agregando columna numero...');
 
                 this.db.transaction(() => {
-                    // Si no existe la columna, recreamos la tabla. 
-                    // Si existe pero hay nulos, también recreamos para simplificar la lógica de renumeración.
-
                     // Crear tabla temporal con nueva estructura
                     this.db.exec(`
                          CREATE TABLE IF NOT EXISTS prestamos_v2 (
@@ -623,6 +632,26 @@ class DatabaseService {
                 })();
 
                 console.log('Migración de préstamos completada exitosamente');
+            } else if (hasNullNumero) {
+                // Si la columna existe pero hay nulos, solo actualizamos los nulos
+                console.log('Corrigiendo préstamos con número NULL...');
+                const bibliotecas = this.db.prepare("SELECT DISTINCT bibliotecaId FROM prestamos WHERE numero IS NULL").all();
+
+                for (const bib of bibliotecas) {
+                    // Obtener el máximo número actual
+                    const maxResult = this.db.prepare("SELECT MAX(numero) as maxNum FROM prestamos WHERE bibliotecaId = ?").get(bib.bibliotecaId);
+                    let currentMax = maxResult.maxNum || 0;
+
+                    // Obtener préstamos con nulos
+                    const nullPrestamos = this.db.prepare("SELECT id FROM prestamos WHERE bibliotecaId = ? AND numero IS NULL ORDER BY id ASC").all(bib.bibliotecaId);
+
+                    const updateStmt = this.db.prepare("UPDATE prestamos SET numero = ? WHERE id = ?");
+
+                    for (const prestamo of nullPrestamos) {
+                        currentMax++;
+                        updateStmt.run(currentMax, prestamo.id);
+                    }
+                }
             }
 
             // Migración: Agregar contador persistente de préstamos a bibliotecas
@@ -633,18 +662,25 @@ class DatabaseService {
             if (!hasLastPrestamoNumero) {
                 console.log('Migrando bibliotecas: agregando contador persistente de préstamos...');
                 this.db.exec("ALTER TABLE bibliotecas ADD COLUMN lastPrestamoNumero INTEGER DEFAULT 0");
+            }
 
-                // Inicializar con el máximo número de préstamo actual para cada biblioteca
-                const bibliotecas = this.db.prepare("SELECT id FROM bibliotecas").all();
-                const updateCounter = this.db.prepare("UPDATE bibliotecas SET lastPrestamoNumero = ? WHERE id = ?");
-                const getMaxNumero = this.db.prepare("SELECT MAX(numero) as maxNum FROM prestamos WHERE bibliotecaId = ?");
+            // SIEMPRE Sincronizar contadores: Esto arregla el problema de "saltos" si hubo re-secuenciación o borrados.
+            // Asegura que lastPrestamoNumero sea al menos el MAX(numero) actual.
+            const bibliotecas = this.db.prepare("SELECT id FROM bibliotecas").all();
+            const updateCounter = this.db.prepare("UPDATE bibliotecas SET lastPrestamoNumero = ? WHERE id = ?");
+            const getMaxNumero = this.db.prepare("SELECT MAX(numero) as maxNum FROM prestamos WHERE bibliotecaId = ?");
 
-                for (const bib of bibliotecas) {
-                    const result = getMaxNumero.get(bib.id);
-                    const maxNum = result.maxNum || 0;
-                    updateCounter.run(maxNum, bib.id);
-                    console.log(`Biblioteca ${bib.id}: lastPrestamoNumero inicializado a ${maxNum}`);
-                }
+            for (const bib of bibliotecas) {
+                const result = getMaxNumero.get(bib.id);
+                // Solo actualizamos si el máximo real es MAYOR que el contador guardado (o si queremos forzar sync)
+                // En este caso, para arreglar el "jump", forzamos que el contador sea el máximo actual.
+                // Así el siguiente será max + 1.
+                const maxNum = result.maxNum || 0;
+
+                // Opcional: Podríamos verificar 'current' antes de update, pero un update es rápido.
+                // Pero UPDATE ... SET lastPrestamoNumero = MAX(lastPrestamoNumero, ?) sería mejor si quisiéramos preservar gaps
+                // Pero el usuario dijo que "se ponen bien en orden" al reiniciar, así que MAX es lo correcto.
+                updateCounter.run(maxNum, bib.id);
             }
 
         } catch (error) {
