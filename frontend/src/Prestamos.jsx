@@ -174,9 +174,8 @@ export default function Prestamos() {
   };
 
   const filteredLibros = libros.filter(libro =>
-    libro.disponible &&
-    (libro.titulo.toLowerCase().includes(libroSearch.toLowerCase()) ||
-      libro.autor.toLowerCase().includes(libroSearch.toLowerCase()))
+  (libro.titulo.toLowerCase().includes(libroSearch.toLowerCase()) ||
+    libro.autor.toLowerCase().includes(libroSearch.toLowerCase()))
   );
 
   const filteredSocios = socios.filter(socio =>
@@ -454,12 +453,27 @@ export default function Prestamos() {
                         {filteredLibros.map(libro => (
                           <div
                             key={libro.id}
-                            className="search-result-item"
-                            onClick={() => selectLibro(libro)}
+                            className={`search-result-item ${!libro.disponible ? 'disabled' : ''}`}
+                            onClick={() => libro.disponible && selectLibro(libro)}
+                            style={!libro.disponible ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
                             <Book size={16} />
-                            <div>
-                              <strong>{libro.titulo}</strong>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <strong>{libro.titulo}</strong>
+                                {!libro.disponible && (
+                                  <span style={{
+                                    fontSize: '10px',
+                                    padding: '2px 6px',
+                                    borderRadius: '99px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    fontWeight: 'bold'
+                                  }}>
+                                    AGOTADO
+                                  </span>
+                                )}
+                              </div>
                               <span>por {libro.autor}</span>
                             </div>
                           </div>
