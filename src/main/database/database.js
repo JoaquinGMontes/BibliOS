@@ -860,9 +860,15 @@ class DatabaseService {
             const params = [bibliotecaId];
 
             if (filters.search) {
-                query += ' AND (nombre LIKE ? OR email LIKE ?)';
                 const searchTerm = `%${filters.search}%`;
-                params.push(searchTerm, searchTerm);
+                // Si el término de búsqueda es un número, también buscamos por ID
+                if (!isNaN(filters.search) && filters.search.trim() !== '') {
+                    query += ' AND (nombre LIKE ? OR email LIKE ? OR CAST(id AS TEXT) LIKE ?)';
+                    params.push(searchTerm, searchTerm, searchTerm);
+                } else {
+                    query += ' AND (nombre LIKE ? OR email LIKE ?)';
+                    params.push(searchTerm, searchTerm);
+                }
             }
 
             if (filters.estado) {

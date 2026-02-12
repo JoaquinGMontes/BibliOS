@@ -240,7 +240,8 @@ export default function Socios() {
   const filteredSocios = socios.filter(socio => {
     const matchesSearch = searchTerm === '' ||
       socio.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      socio.email.toLowerCase().includes(searchTerm.toLowerCase());
+      socio.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      socio.numeroEnBiblioteca.toString().includes(searchTerm);
 
     const matchesFilter = filterStatus === 'todos' || socio.estado === filterStatus;
 
