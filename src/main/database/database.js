@@ -179,9 +179,11 @@ class DatabaseService {
                     fechaDevolucionReal DATETIME,
                     estado TEXT DEFAULT 'activo',
                     observaciones TEXT,
+                    numero INTEGER,
                     FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
                     FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
-                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                    UNIQUE(numero, bibliotecaId)
                 )
             `);
 
@@ -542,7 +544,107 @@ class DatabaseService {
                         CREATE INDEX IF NOT EXISTS idx_libros_biblioteca ON libros(bibliotecaId);
                     `);
                 })();
-                console.log('Migración de libros completada exitosamente');
+            }
+
+            // Migración: Agregar número de préstamo secuencial por biblioteca
+            // Verificamos si la tabla prestamos tiene la columna numero
+            const prestamosInfo = this.db.prepare("PRAGMA table_info(prestamos)").all();
+            const hasNumeroCol = prestamosInfo.some(c => c.name === 'numero');
+
+            // Verificamos si hay préstamos con numero NULL (migración incompleta o previa)
+            let hasNullNumero = false;
+            if (hasNumeroCol) {
+                const nullCheck = this.db.prepare("SELECT COUNT(*) as count FROM prestamos WHERE numero IS NULL").get();
+                hasNullNumero = nullCheck.count > 0;
+            }
+
+            if (!hasNumeroCol || hasNullNumero) {
+                console.log('Migrando tabla prestamos: agregando/corrigiendo números secuenciales por biblioteca...');
+
+                this.db.transaction(() => {
+                    // Si no existe la columna, recreamos la tabla. 
+                    // Si existe pero hay nulos, también recreamos para simplificar la lógica de renumeración.
+
+                    // Crear tabla temporal con nueva estructura
+                    this.db.exec(`
+                         CREATE TABLE IF NOT EXISTS prestamos_v2 (
+                             id INTEGER PRIMARY KEY AUTOINCREMENT,
+                             libroId INTEGER,
+                             socioId INTEGER,
+                             bibliotecaId INTEGER,
+                             fechaPrestamo DATETIME DEFAULT CURRENT_TIMESTAMP,
+                             fechaDevolucion DATETIME,
+                             fechaDevolucionReal DATETIME,
+                             estado TEXT DEFAULT 'activo',
+                             observaciones TEXT,
+                             numero INTEGER,
+                             FOREIGN KEY (libroId) REFERENCES libros(id) ON DELETE SET NULL,
+                             FOREIGN KEY (socioId) REFERENCES socios(id) ON DELETE SET NULL,
+                             FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                             UNIQUE(numero, bibliotecaId)
+                         )
+                     `);
+
+                    // Obtener todos los préstamos existentes agrupados por biblioteca
+                    const bibliotecas = this.db.prepare("SELECT DISTINCT bibliotecaId FROM prestamos").all();
+
+                    for (const bib of bibliotecas) {
+                        // Ordenar por fecha o ID para mantener orden cronológico
+                        const prestamosBib = this.db.prepare("SELECT * FROM prestamos WHERE bibliotecaId = ? ORDER BY id ASC").all(bib.bibliotecaId);
+
+                        let contador = 1;
+                        const insertStmt = this.db.prepare(`
+                             INSERT INTO prestamos_v2 (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones, numero)
+                             VALUES (@id, @libroId, @socioId, @bibliotecaId, @fechaPrestamo, @fechaDevolucion, @fechaDevolucionReal, @estado, @observaciones, @numero)
+                         `);
+
+                        for (const prestamo of prestamosBib) {
+                            insertStmt.run({
+                                ...prestamo,
+                                numero: contador++
+                            });
+                        }
+                    }
+
+                    // Eliminar tabla antigua y renombrar nueva
+                    this.db.exec('DROP TABLE prestamos');
+                    this.db.exec('ALTER TABLE prestamos_v2 RENAME TO prestamos');
+
+
+                    // Recrear índices
+                    this.db.exec(`
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_biblioteca ON prestamos(bibliotecaId);
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_libro ON prestamos(libroId);
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_socio ON prestamos(socioId);
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_fecha ON prestamos(fechaPrestamo);
+                         CREATE INDEX IF NOT EXISTS idx_prestamos_devolucion ON prestamos(fechaDevolucion);
+                     `);
+                })();
+
+                console.log('Migración de préstamos completada exitosamente');
+            }
+
+            // Migración: Agregar contador persistente de préstamos a bibliotecas
+            // Verificamos si bibliotecas tiene lastPrestamoNumero
+            const bibInfo = this.db.prepare("PRAGMA table_info(bibliotecas)").all();
+            const hasLastPrestamoNumero = bibInfo.some(c => c.name === 'lastPrestamoNumero');
+
+            if (!hasLastPrestamoNumero) {
+                console.log('Migrando bibliotecas: agregando contador persistente de préstamos...');
+                this.db.exec("ALTER TABLE bibliotecas ADD COLUMN lastPrestamoNumero INTEGER DEFAULT 0");
+
+                // Inicializar con el máximo número de préstamo actual para cada biblioteca
+                const bibliotecas = this.db.prepare("SELECT id FROM bibliotecas").all();
+                const updateCounter = this.db.prepare("UPDATE bibliotecas SET lastPrestamoNumero = ? WHERE id = ?");
+                const getMaxNumero = this.db.prepare("SELECT MAX(numero) as maxNum FROM prestamos WHERE bibliotecaId = ?");
+
+                for (const bib of bibliotecas) {
+                    const result = getMaxNumero.get(bib.id);
+                    const maxNum = result.maxNum || 0;
+                    updateCounter.run(maxNum, bib.id);
+                    console.log(`Biblioteca ${bib.id}: lastPrestamoNumero inicializado a ${maxNum}`);
+                }
             }
 
         } catch (error) {
@@ -1179,17 +1281,43 @@ class DatabaseService {
             }
 
             // Crear el préstamo
+            // Usar contador persistente en la tabla bibliotecas para evitar reutilización y asegurar secuencia
+            // Primero, incrementamos el contador y obtenemos el nuevo valor
+            let nextNumero = 1;
+
+            // Transacción anidada o asegurarse que esto es parte de la transacción principal (lo es)
+            // Actualizamos y obtenemos en pasos separados porque RETURNING no es soportado por todas las versiones de SQLite o better-sqlite3 de forma directa en todos los contextos,
+            // pero vamos a intentar hacerlo de forma segura.
+
+            // 1. Obtener valor actual e incrementar
+            const updateCounterParams = this.db.prepare('UPDATE bibliotecas SET lastPrestamoNumero = lastPrestamoNumero + 1 WHERE id = ?').run(prestamoData.bibliotecaId);
+
+            // 2. Obtener el nuevo valor
+            const newCounter = this.db.prepare('SELECT lastPrestamoNumero FROM bibliotecas WHERE id = ?').get(prestamoData.bibliotecaId);
+
+            if (newCounter && newCounter.lastPrestamoNumero) {
+                nextNumero = newCounter.lastPrestamoNumero;
+            } else {
+                // Fallback por si algo falló (no debería)
+                const lastLoanParams = this.db.prepare('SELECT MAX(numero) as maxNum FROM prestamos WHERE bibliotecaId = ?').get(prestamoData.bibliotecaId);
+                nextNumero = (lastLoanParams && lastLoanParams.maxNum) ? lastLoanParams.maxNum + 1 : 1;
+            }
+
+
+
             const stmt = this.db.prepare(`
-                INSERT INTO prestamos (libroId, socioId, bibliotecaId, fechaDevolucion, observaciones)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO prestamos (libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, observaciones, numero)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
 
             const result = stmt.run(
                 prestamoData.libroId,
                 prestamoData.socioId,
                 prestamoData.bibliotecaId,
+                prestamoData.fechaPrestamo || new Date().toISOString(),
                 prestamoData.fechaDevolucion,
-                prestamoData.observaciones || null
+                prestamoData.observaciones || null,
+                nextNumero
             );
 
             // Actualizar disponibilidad del libro

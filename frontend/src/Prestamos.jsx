@@ -32,6 +32,7 @@ export default function Prestamos() {
     if (prestamosRaw) {
       const prestamosFormateados = prestamosRaw.map(prestamo => ({
         id: prestamo.id,
+        numero: prestamo.numero,
         libroId: prestamo.libroId,
         socioId: prestamo.socioId,
         fechaPrestamo: prestamo.fechaPrestamo ? prestamo.fechaPrestamo.split('T')[0] : '',
@@ -619,7 +620,7 @@ export default function Prestamos() {
             <table className="prestamos-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>N°</th>
                   <th>Libro</th>
                   <th>Socio</th>
                   <th>Fecha Préstamo</th>
@@ -635,7 +636,7 @@ export default function Prestamos() {
 
                   return (
                     <tr key={prestamo.id}>
-                      <td>#{prestamo.id}</td>
+                      <td>#{prestamo.numero || prestamo.id}</td>
                       <td>
                         <div className="book-info">
                           <Book size={14} />
@@ -712,7 +713,7 @@ export default function Prestamos() {
           <div className="modal-overlay" onClick={() => setShowDetails(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>Detalles del Préstamo #{selectedPrestamo.id}</h3>
+                <h3>Detalles del Préstamo #{selectedPrestamo.numero || selectedPrestamo.id}</h3>
                 <button
                   className="close-button"
                   onClick={() => setShowDetails(false)}

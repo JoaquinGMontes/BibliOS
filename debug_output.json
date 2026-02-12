@@ -1,0 +1,311 @@
+{
+  "loans": [
+    {
+      "id": 1,
+      "bibliotecaId": 1,
+      "numero": 1
+    },
+    {
+      "id": 40,
+      "bibliotecaId": 3,
+      "numero": 1
+    },
+    {
+      "id": 43,
+      "bibliotecaId": 6,
+      "numero": 1
+    },
+    {
+      "id": 2,
+      "bibliotecaId": 1,
+      "numero": 2
+    },
+    {
+      "id": 41,
+      "bibliotecaId": 3,
+      "numero": 2
+    },
+    {
+      "id": 44,
+      "bibliotecaId": 6,
+      "numero": 2
+    },
+    {
+      "id": 3,
+      "bibliotecaId": 1,
+      "numero": 3
+    },
+    {
+      "id": 42,
+      "bibliotecaId": 3,
+      "numero": 3
+    },
+    {
+      "id": 46,
+      "bibliotecaId": 6,
+      "numero": 3
+    },
+    {
+      "id": 4,
+      "bibliotecaId": 1,
+      "numero": 4
+    },
+    {
+      "id": 5,
+      "bibliotecaId": 1,
+      "numero": 5
+    },
+    {
+      "id": 6,
+      "bibliotecaId": 1,
+      "numero": 6
+    },
+    {
+      "id": 7,
+      "bibliotecaId": 1,
+      "numero": 7
+    },
+    {
+      "id": 8,
+      "bibliotecaId": 1,
+      "numero": 8
+    },
+    {
+      "id": 9,
+      "bibliotecaId": 1,
+      "numero": 9
+    },
+    {
+      "id": 10,
+      "bibliotecaId": 1,
+      "numero": 10
+    },
+    {
+      "id": 11,
+      "bibliotecaId": 1,
+      "numero": 11
+    },
+    {
+      "id": 12,
+      "bibliotecaId": 1,
+      "numero": 12
+    },
+    {
+      "id": 13,
+      "bibliotecaId": 1,
+      "numero": 13
+    },
+    {
+      "id": 14,
+      "bibliotecaId": 1,
+      "numero": 14
+    },
+    {
+      "id": 15,
+      "bibliotecaId": 1,
+      "numero": 15
+    },
+    {
+      "id": 16,
+      "bibliotecaId": 1,
+      "numero": 16
+    },
+    {
+      "id": 17,
+      "bibliotecaId": 1,
+      "numero": 17
+    },
+    {
+      "id": 18,
+      "bibliotecaId": 1,
+      "numero": 18
+    },
+    {
+      "id": 19,
+      "bibliotecaId": 1,
+      "numero": 19
+    },
+    {
+      "id": 20,
+      "bibliotecaId": 1,
+      "numero": 20
+    },
+    {
+      "id": 21,
+      "bibliotecaId": 1,
+      "numero": 21
+    },
+    {
+      "id": 22,
+      "bibliotecaId": 1,
+      "numero": 22
+    },
+    {
+      "id": 23,
+      "bibliotecaId": 1,
+      "numero": 23
+    },
+    {
+      "id": 24,
+      "bibliotecaId": 1,
+      "numero": 24
+    },
+    {
+      "id": 25,
+      "bibliotecaId": 1,
+      "numero": 25
+    },
+    {
+      "id": 26,
+      "bibliotecaId": 1,
+      "numero": 26
+    },
+    {
+      "id": 27,
+      "bibliotecaId": 1,
+      "numero": 27
+    },
+    {
+      "id": 28,
+      "bibliotecaId": 1,
+      "numero": 28
+    },
+    {
+      "id": 29,
+      "bibliotecaId": 1,
+      "numero": 29
+    },
+    {
+      "id": 30,
+      "bibliotecaId": 1,
+      "numero": 30
+    },
+    {
+      "id": 31,
+      "bibliotecaId": 1,
+      "numero": 31
+    },
+    {
+      "id": 32,
+      "bibliotecaId": 1,
+      "numero": 32
+    },
+    {
+      "id": 33,
+      "bibliotecaId": 1,
+      "numero": 33
+    },
+    {
+      "id": 34,
+      "bibliotecaId": 1,
+      "numero": 34
+    },
+    {
+      "id": 35,
+      "bibliotecaId": 1,
+      "numero": 35
+    },
+    {
+      "id": 36,
+      "bibliotecaId": 1,
+      "numero": 36
+    },
+    {
+      "id": 37,
+      "bibliotecaId": 1,
+      "numero": 37
+    },
+    {
+      "id": 38,
+      "bibliotecaId": 1,
+      "numero": 38
+    },
+    {
+      "id": 39,
+      "bibliotecaId": 1,
+      "numero": 39
+    }
+  ],
+  "info": [
+    {
+      "cid": 0,
+      "name": "id",
+      "type": "INTEGER",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 1
+    },
+    {
+      "cid": 1,
+      "name": "libroId",
+      "type": "INTEGER",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 2,
+      "name": "socioId",
+      "type": "INTEGER",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 3,
+      "name": "bibliotecaId",
+      "type": "INTEGER",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 4,
+      "name": "fechaPrestamo",
+      "type": "DATETIME",
+      "notnull": 0,
+      "dflt_value": "CURRENT_TIMESTAMP",
+      "pk": 0
+    },
+    {
+      "cid": 5,
+      "name": "fechaDevolucion",
+      "type": "DATETIME",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 6,
+      "name": "fechaDevolucionReal",
+      "type": "DATETIME",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 7,
+      "name": "estado",
+      "type": "TEXT",
+      "notnull": 0,
+      "dflt_value": "'activo'",
+      "pk": 0
+    },
+    {
+      "cid": 8,
+      "name": "observaciones",
+      "type": "TEXT",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    },
+    {
+      "cid": 9,
+      "name": "numero",
+      "type": "INTEGER",
+      "notnull": 0,
+      "dflt_value": null,
+      "pk": 0
+    }
+  ]
+}
