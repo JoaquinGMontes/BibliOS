@@ -124,7 +124,7 @@ class DatabaseService {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     titulo TEXT NOT NULL,
                     autor TEXT NOT NULL,
-                    isbn TEXT UNIQUE,
+                    isbn TEXT,
                     categoria TEXT,
                     editorial TEXT,
                     lugarPublicacion TEXT,
@@ -141,7 +141,8 @@ class DatabaseService {
                     numeroControl TEXT,
                     bibliotecaId INTEGER,
                     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                    UNIQUE(isbn, bibliotecaId)
                 )
             `);
 
@@ -485,6 +486,62 @@ class DatabaseService {
                 console.log('Migración de socios v3 completada exitosamente');
             }
 
+            // Migración: Permitir mismo ISBN en diferentes bibliotecas
+            // Verificamos si la tabla libros tiene la restricción UNIQUE(isbn, bibliotecaId)
+            const librosDef = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='libros'").get();
+            if (librosDef && !librosDef.sql.includes('UNIQUE(isbn, bibliotecaId)')) {
+                console.log('Migrando tabla libros: permitiendo ISBNs duplicados en diferentes bibliotecas...');
+
+                this.db.transaction(() => {
+                    // Crear tabla temporal con nueva estructura
+                    this.db.exec(`
+                        CREATE TABLE libros_v2 (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            titulo TEXT NOT NULL,
+                            autor TEXT NOT NULL,
+                            isbn TEXT,
+                            categoria TEXT,
+                            editorial TEXT,
+                            lugarPublicacion TEXT,
+                            anioPublicacion INTEGER,
+                            edicion TEXT,
+                            cantidad INTEGER DEFAULT 1,
+                            disponibles INTEGER DEFAULT 1,
+                            paginas TEXT,
+                            clasificacion TEXT,
+                            ubicacion TEXT,
+                            estado TEXT DEFAULT 'disponible',
+                            descripcion TEXT,
+                            cabecera TEXT,
+                            bibliotecaId INTEGER,
+                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                            UNIQUE(isbn, bibliotecaId)
+                        )
+                    `);
+
+                    // Copiar datos
+                    this.db.exec(`
+                        INSERT INTO libros_v2 (id, titulo, autor, isbn, categoria, editorial, lugarPublicacion, anioPublicacion, edicion, cantidad, disponibles, paginas, clasificacion, ubicacion, estado, descripcion, cabecera, bibliotecaId)
+                        SELECT id, titulo, autor, isbn, categoria, editorial, lugarPublicacion, anioPublicacion, edicion, cantidad, disponibles, paginas, clasificacion, ubicacion, estado, descripcion, cabecera, bibliotecaId
+                        FROM libros
+                    `);
+
+                    // Eliminar tabla antigua y renombrar nueva
+                    this.db.exec('DROP TABLE libros');
+                    this.db.exec('ALTER TABLE libros_v2 RENAME TO libros');
+
+                    // Indices para libros
+                    this.db.exec(`
+                        CREATE INDEX IF NOT EXISTS idx_libros_titulo ON libros(titulo);
+                        CREATE INDEX IF NOT EXISTS idx_libros_autor ON libros(autor);
+                        CREATE INDEX IF NOT EXISTS idx_libros_isbn ON libros(isbn);
+                        CREATE INDEX IF NOT EXISTS idx_libros_categoria ON libros(categoria);
+                        CREATE INDEX IF NOT EXISTS idx_libros_biblioteca ON libros(bibliotecaId);
+                    `);
+                })();
+                console.log('Migración de libros completada exitosamente');
+            }
+
         } catch (error) {
             console.error('Error al migrar tablas:', error);
             // No lanzar error para no bloquear la aplicación
@@ -641,9 +698,19 @@ class DatabaseService {
             Validators.validatePositiveNumber(libroData.disponibles, 'disponibles');
 
             // Verificar que la biblioteca existe
-            const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId); //Una query que se fija en la table bibliotecas si existe una con ese id (el que luego ocupara el lugar del "?" en la query)
+            const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId);
             if (!biblioteca) {
                 throw new Error('La biblioteca especificada no existe');
+            }
+
+            // Validar que el ISBN no exista en ESTA biblioteca
+            if (libroData.isbn) {
+                const existingBook = this.db.prepare('SELECT id FROM libros WHERE isbn = ? AND bibliotecaId = ?')
+                    .get(libroData.isbn, libroData.bibliotecaId);
+
+                if (existingBook) {
+                    throw new Error(`Ya existe un libro con el ISBN "${libroData.isbn}" en esta biblioteca.`);
+                }
             }
 
             const stmt = this.db.prepare(`
@@ -746,6 +813,20 @@ class DatabaseService {
             });
 
             if (fields.length === 0) return false;
+
+            // Validar ISBN único en la biblioteca si cambiaron el ISBN
+            if (updates.isbn) {
+                // Buscamos el libro actual para saber su biblioteca
+                const currentBook = this.db.prepare('SELECT bibliotecaId FROM libros WHERE id = ?').get(id);
+                if (!currentBook) throw new Error('Libro no encontrado');
+
+                const existingBook = this.db.prepare('SELECT id FROM libros WHERE isbn = ? AND bibliotecaId = ? AND id != ?')
+                    .get(updates.isbn, currentBook.bibliotecaId, id);
+
+                if (existingBook) {
+                    throw new Error(`Ya existe un libro con el ISBN "${updates.isbn}" en esta biblioteca.`);
+                }
+            }
 
             values.push(id);
             const stmt = this.db.prepare(`UPDATE libros SET ${fields.join(', ')} WHERE id = ?`);
