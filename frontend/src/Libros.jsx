@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, Search, Filter, BookOpen, User, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Edit, Trash2,
@@ -264,6 +265,7 @@ export default function Libros() {
   };
 
   const handleEliminar = (libroId) => {
+    console.log('handleEliminar called for libroId:', libroId);
     setLibroToDelete(libroId);
     setShowDeleteConfirm(true);
   };
@@ -297,6 +299,7 @@ export default function Libros() {
 
   // Funciones de edición
   const handleEditClick = (libro) => {
+    console.log('handleEditClick called for libro:', libro);
     setLibroToEdit(libro);
     setEditFormData({
       titulo: libro.titulo,
@@ -863,14 +866,20 @@ export default function Libros() {
                           </button>
                           <button
                             className="action-btn edit"
-                            onClick={() => handleEditClick(libro)}
+                            onClick={() => {
+                              console.log('Clicking Edit for:', libro);
+                              handleEditClick(libro);
+                            }}
                             title="Editar libro"
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             className="action-btn delete"
-                            onClick={() => handleEliminar(libro.id)}
+                            onClick={() => {
+                              console.log('Clicking Delete for:', libro.id);
+                              handleEliminar(libro.id);
+                            }}
                             title="Eliminar libro"
                           >
                             <Trash2 size={14} />
@@ -887,7 +896,7 @@ export default function Libros() {
 
         {/* Modal de detalles */}
         {
-          showDetails && selectedLibro && (
+          showDetails && selectedLibro && createPortal(
             <div className="modal-overlay" onClick={() => setShowDetails(false)}>
               <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
@@ -1001,13 +1010,14 @@ export default function Libros() {
                   )}
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )
         }
 
         {/* Modal de confirmación de eliminación */}
         {
-          showDeleteConfirm && (
+          showDeleteConfirm && createPortal(
             <div className="modal-overlay" onClick={cancelDelete}>
               <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
@@ -1041,13 +1051,14 @@ export default function Libros() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )
         }
 
         {/* Modal de edición */}
         {
-          showEditModal && libroToEdit && (
+          showEditModal && libroToEdit && createPortal(
             <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
               <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
@@ -1258,7 +1269,8 @@ export default function Libros() {
                   </form>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )
         }
       </div >

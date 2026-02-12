@@ -118,6 +118,7 @@ button {
   font-family: inherit;
   background-color: #121212;
   cursor: pointer;
+  pointer-events: auto;
   transition: border-color 0.25s;
 }
 

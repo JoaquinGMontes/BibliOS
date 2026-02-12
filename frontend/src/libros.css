@@ -574,6 +574,8 @@ button:hover {
 .actions {
   display: flex;
   gap: 0.5rem;
+  position: relative;
+  z-index: 10;
 }
 
 .action-btn {
@@ -587,6 +589,9 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .action-btn.view:hover {
@@ -615,10 +620,12 @@ button:hover {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  display: flex;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999 !important;
   backdrop-filter: blur(5px);
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, User, Mail, Phone, Calendar,
@@ -44,7 +45,10 @@ export default function Socios() {
     observaciones: ''
   });
 
-  // Sync with DataContext: numeración de socio por biblioteca (orden de creación)
+  // Sync with DataContext: numeración
+  console.log('Socios Render State:', { showDetails, showEditModal, showDeleteConfirm, socioToEdit, selectedSocio });
+
+  // Cerrar formularios al cambiar de pestaña
   useEffect(() => {
     if (sociosRaw && prestamos) {
       const sorted = [...sociosRaw].sort((a, b) => a.id - b.id);
@@ -151,6 +155,7 @@ export default function Socios() {
   };
 
   const handleEliminar = (socioId) => {
+    console.log('handleEliminar called with:', socioId);
     setSocioToDelete(socioId);
     setShowDeleteConfirm(true);
   };
@@ -184,6 +189,7 @@ export default function Socios() {
 
   // Funciones de edición
   const handleEditClick = (socio) => {
+    console.log('handleEditClick called with:', socio);
     setSocioToEdit(socio);
     setEditFormData({
       nombre: socio.nombre,
@@ -568,14 +574,20 @@ export default function Socios() {
                           </button>
                           <button
                             className="action-btn edit"
-                            onClick={() => handleEditClick(socio)}
+                            onClick={() => {
+                              console.log('Clicking Edit for:', socio);
+                              handleEditClick(socio);
+                            }}
                             title="Editar socio"
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             className="action-btn delete"
-                            onClick={() => handleEliminar(socio.id)}
+                            onClick={() => {
+                              console.log('Clicking Delete for:', socio.id);
+                              handleEliminar(socio.id);
+                            }}
                             title="Eliminar socio"
                           >
                             <Trash2 size={14} />
@@ -591,8 +603,8 @@ export default function Socios() {
         </div>
 
         {/* Modal de detalles */}
-        {showDetails && selectedSocio && (
-          <div className="modal-overlay" onClick={() => setShowDetails(false)}>
+        {showDetails && selectedSocio && createPortal(
+          <div className="modal-overlay" style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)', zIndex: 99999 }} onClick={() => setShowDetails(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Detalles del Socio #{selectedSocio.numeroEnBiblioteca}</h3>
@@ -649,12 +661,13 @@ export default function Socios() {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Modal de confirmación de eliminación */}
-        {showDeleteConfirm && (
-          <div className="modal-overlay" onClick={cancelDelete}>
+        {showDeleteConfirm && createPortal(
+          <div className="modal-overlay" style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)', zIndex: 99999 }} onClick={cancelDelete}>
             <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Confirmar Eliminación</h3>
@@ -687,12 +700,13 @@ export default function Socios() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Modal de edición */}
-        {showEditModal && socioToEdit && (
-          <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+        {showEditModal && socioToEdit && createPortal(
+          <div className="modal-overlay" style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)', zIndex: 99999 }} onClick={() => setShowEditModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Editar Socio #{socioToEdit.numeroEnBiblioteca}</h3>
@@ -784,7 +798,8 @@ export default function Socios() {
                 </form>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </>
