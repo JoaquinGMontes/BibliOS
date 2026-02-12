@@ -867,6 +867,19 @@ class DatabaseService {
             Validators.validatePositiveNumber(libroData.cantidad, 'cantidad');
             Validators.validatePositiveNumber(libroData.disponibles, 'disponibles');
 
+            // Validar Número de Control (solo números)
+            if (libroData.numeroControl && !/^\d+$/.test(libroData.numeroControl)) {
+                throw new Error('El número de control debe contener solo números');
+            }
+
+            // Validar Páginas (entero positivo)
+            if (libroData.paginas) {
+                const paginasNum = Number(libroData.paginas);
+                if (!Number.isInteger(paginasNum) || paginasNum <= 0) {
+                    throw new Error('El número de páginas debe ser un número entero positivo');
+                }
+            }
+
             // Verificar que la biblioteca existe
             const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId);
             if (!biblioteca) {
@@ -984,12 +997,29 @@ class DatabaseService {
 
             if (fields.length === 0) return false;
 
+            // VALIDACIONES DE ACTUALIZACIÓN
+
+            // Validar Número de Control (solo números)
+            if (updates.numeroControl !== undefined && updates.numeroControl !== null && updates.numeroControl !== '') {
+                if (!/^\d+$/.test(updates.numeroControl)) {
+                    throw new Error('El número de control debe contener solo números');
+                }
+            }
+
+            // Validar Páginas (entero positivo)
+            if (updates.paginas !== undefined && updates.paginas !== null && updates.paginas !== '') {
+                const paginasNum = Number(updates.paginas);
+                if (!Number.isInteger(paginasNum) || paginasNum <= 0) {
+                    throw new Error('El número de páginas debe ser un número entero positivo');
+                }
+            }
+
             // Validar ISBN único en la biblioteca si cambiaron el ISBN
             if (updates.isbn) {
                 // Buscamos el libro actual para saber su biblioteca
-                const currentBook = this.db.prepare('SELECT bibliotecaId FROM libros WHERE id = ?').get(id);
                 if (!currentBook) throw new Error('Libro no encontrado');
 
+                // Buscar si existe otro libro con mismo ISBN en la misma biblioteca
                 const existingBook = this.db.prepare('SELECT id FROM libros WHERE isbn = ? AND bibliotecaId = ? AND id != ?')
                     .get(updates.isbn, currentBook.bibliotecaId, id);
 

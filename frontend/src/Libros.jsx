@@ -108,6 +108,17 @@ export default function Libros() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Validación: Número de Control solo números
+    if (name === 'numeroControl' && value && !/^\d*$/.test(value)) {
+      return;
+    }
+
+    // Validación: Páginas solo números
+    if (name === 'paginas' && value && !/^\d*$/.test(value)) {
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -309,6 +320,17 @@ export default function Libros() {
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Validación: Número de Control solo números
+    if (name === 'numeroControl' && value && !/^\d*$/.test(value)) {
+      return;
+    }
+
+    // Validación: Páginas solo números
+    if (name === 'paginas' && value && !/^\d*$/.test(value)) {
+      return;
+    }
+
     setEditFormData(prev => ({
       ...prev,
       [name]: value
