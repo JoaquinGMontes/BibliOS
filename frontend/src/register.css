@@ -25,7 +25,7 @@
 
 .register-container {
   min-height: 100vh;
-  background: #121212;
+  background: var(--bg-primary);
   padding: 0;
   display: flex;
   align-items: flex-start;
@@ -51,7 +51,7 @@
 .register-content {
   width: 100%;
   max-width: 1200px;
-  margin: 5rem auto 0 auto;
+  margin: 2rem auto 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -120,7 +120,7 @@
 }
 
 .register-header h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 700;
   margin: 0;
   color: var(--accent-primary);
@@ -132,13 +132,14 @@
 }
 
 .register-header p {
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
   color: #d1d5db;
   margin: 0;
   max-width: 600px;
   display: inline-block !important;
   flex-shrink: 1;
   min-width: 0;
+  text-align: left;
 }
 
 .register-sections {
@@ -194,7 +195,7 @@
   margin: 0;
 }
 
-.form-group {
+.register-form .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -212,7 +213,7 @@
   grid-template-columns: repeat(2, 1fr);
 }
 
-.form-group label {
+.register-form .form-group label {
   font-size: 1rem;
   font-weight: 600;
   color: #e5e7eb;
@@ -224,18 +225,23 @@
   margin-bottom: 0.25rem;
 }
 
-.form-group label svg {
+.register-form .form-group label svg {
   color: var(--accent-primary);
 }
 
-.form-group input,
-.form-group textarea {
-  padding: 1rem 1.25rem;
+.required-asterisk {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
+
+.register-form .form-group input,
+.register-form .form-group textarea {
+  padding: 0.75rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   color: #ffffff !important;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   width: 100%;
@@ -244,14 +250,14 @@
   opacity: 1;
 }
 
-.form-group input:hover,
-.form-group textarea:hover {
+.register-form .form-group input:hover,
+.register-form .form-group textarea:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(19, 64, 116, 0.5);
+  border-color: var(--text-primary);
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.register-form .form-group input:focus,
+.register-form .form-group textarea:focus {
   outline: none;
   border-color: var(--accent-primary);
   background: rgba(19, 64, 116, 0.08);
@@ -260,15 +266,15 @@
   opacity: 1;
 }
 
-.form-group input::placeholder,
-.form-group textarea::placeholder {
+.register-form .form-group input::placeholder,
+.register-form .form-group textarea::placeholder {
   color: rgba(255, 255, 255, 0.3);
   font-weight: 400;
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-.form-group input.error,
-.form-group textarea.error {
+.register-form .form-group input.error,
+.register-form .form-group textarea.error {
   border-color: #ef4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
@@ -316,11 +322,13 @@
 }
 
 .password-hint {
-  font-size: 1.05rem;
-  color: #888;
-  margin-top: 0.5rem;
-  font-style: italic;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 0.35rem;
+  font-style: normal;
   font-family: 'Inter', sans-serif;
+  text-align: left;
+  width: 100%;
 }
 
 .submit-button {
@@ -341,7 +349,8 @@
   width: 100%;
   max-width: 300px;
   margin-left: auto;
-  margin-right: auto;
+  margin-right: 0;
+  align-self: flex-end;
 }
 
 .submit-button:hover:not(:disabled) {
@@ -659,4 +668,90 @@
     font-size: 1.3rem;
     margin-top: 1.5rem;
   }
+}
+
+/* ── Light Mode Overrides ── */
+body[data-theme="light"] .register-container {
+  background: var(--bg-primary);
+}
+
+body[data-theme="light"] .register-header p {
+  color: var(--text-secondary);
+}
+
+body[data-theme="light"] .register-form-section {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--border-color);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme="light"] .register-form-section::before {
+  opacity: 0.3;
+}
+
+body[data-theme="light"] .register-form .form-group label {
+  color: var(--text-primary);
+}
+
+body[data-theme="light"] .register-form .form-group input,
+body[data-theme="light"] .register-form .form-group textarea {
+  background: #ffffff;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+body[data-theme="light"] .register-form .form-group input::placeholder,
+body[data-theme="light"] .register-form .form-group textarea::placeholder {
+  color: var(--text-muted);
+}
+
+body[data-theme="light"] .register-form .form-group input:hover,
+body[data-theme="light"] .register-form .form-group textarea:hover {
+  background: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+body[data-theme="light"] .register-form .form-group input:focus,
+body[data-theme="light"] .register-form .form-group textarea:focus {
+  background: #ffffff;
+  border-color: var(--accent-primary) !important;
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(19, 64, 116, 0.2);
+}
+
+body[data-theme="light"] .existing-libraries-section {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--border-color);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme="light"] .existing-libraries-section h2 {
+  color: var(--accent-primary);
+}
+
+body[data-theme="light"] .library-card {
+  border-color: var(--border-color);
+  background: #ffffff;
+}
+
+body[data-theme="light"] .library-info h3 {
+  color: var(--text-primary);
+}
+
+body[data-theme="light"] .library-address,
+body[data-theme="light"] .library-responsible,
+body[data-theme="light"] .library-date {
+  color: var(--text-secondary);
+}
+
+body[data-theme="light"] .back-button {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+body[data-theme="light"] .back-button:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
 }

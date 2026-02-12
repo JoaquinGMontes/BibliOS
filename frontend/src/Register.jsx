@@ -21,7 +21,7 @@ function Register() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Estados para autenticación
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,19 +30,19 @@ function Register() {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'El nombre de la biblioteca es requerido';
     }
-    
+
     if (!formData.direccion.trim()) {
       newErrors.direccion = 'La dirección es requerida';
     }
-    
+
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'El email no es válido';
     }
-    
+
     if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
       newErrors.telefono = 'El teléfono no es válido';
     }
@@ -82,11 +82,11 @@ function Register() {
   // Función para restaurar focus en inputs (solución para Windows/Electron)
   const handleInputClick = (e) => {
     const target = e.target;
-    
+
     // Método 1: Focus directo
     target.focus();
     target.select();
-    
+
     // Método 2: Si no funciona, intentar con click programático
     setTimeout(() => {
       if (document.activeElement !== target) {
@@ -131,7 +131,7 @@ function Register() {
 
       // Limpiar el formulario COMPLETAMENTE
       clearForm();
-      
+
       // FORZAR LIMPIEZA ADICIONAL DEL ESTADO
       setFormData({
         nombre: '',
@@ -146,7 +146,7 @@ function Register() {
       setErrors({});
       setPasswordError('');
       setIsSubmitting(false);
-      
+
       // LOG PARA VERIFICAR LIMPIEZA
       console.log('FORMULARIO LIMPIADO COMPLETAMENTE');
 
@@ -179,15 +179,15 @@ function Register() {
 
       // SOLUCIÓN DEFINITIVA: NO navegar automáticamente, dejar al usuario en la página
       // Y usar un enfoque diferente para el focus
-      
+
       // Crear un input temporal invisible para capturar el focus
       const tempInput = document.createElement('input');
       tempInput.style.cssText = 'position: absolute; left: -9999px; opacity: 0;';
       document.body.appendChild(tempInput);
-      
+
       // Forzar focus en el input temporal primero
       tempInput.focus();
-      
+
       // Luego mover el focus al input real
       setTimeout(() => {
         const firstInput = document.querySelector('input[name="nombre"]');
@@ -195,7 +195,7 @@ function Register() {
           firstInput.focus();
           firstInput.select(); // Seleccionar todo el texto
         }
-        
+
         // Remover el input temporal
         document.body.removeChild(tempInput);
       }, 100);
@@ -224,7 +224,7 @@ function Register() {
         font-size: 14px;
         max-width: 300px;
       `;
-      
+
       if (error.message && error.message.includes('Ya existe una biblioteca')) {
         errorMessage.textContent = `Error: ${error.message}`;
         // Limpiar solo el nombre para que pueda cambiarlo
@@ -248,11 +248,11 @@ function Register() {
         setErrors({});
         setPasswordError('');
         setIsSubmitting(false);
-        
+
         // LOG PARA VERIFICAR LIMPIEZA
         console.log('FORMULARIO LIMPIADO COMPLETAMENTE (ERROR)');
       }
-      
+
       document.body.appendChild(errorMessage);
 
       // Remover el mensaje después de 4 segundos
@@ -266,10 +266,10 @@ function Register() {
       const tempInput = document.createElement('input');
       tempInput.style.cssText = 'position: absolute; left: -9999px; opacity: 0;';
       document.body.appendChild(tempInput);
-      
+
       // Forzar focus en el input temporal primero
       tempInput.focus();
-      
+
       // Luego mover el focus al input real
       setTimeout(() => {
         const targetInput = document.querySelector('input[name="nombre"]');
@@ -277,7 +277,7 @@ function Register() {
           targetInput.focus();
           targetInput.select(); // Seleccionar todo el texto
         }
-        
+
         // Remover el input temporal
         document.body.removeChild(tempInput);
       }, 100);
@@ -308,7 +308,7 @@ function Register() {
       cancelId: 0,
       okIndex: 1
     });
-    
+
     if (!confirmed) {
       return;
     }
@@ -327,22 +327,22 @@ function Register() {
   return (
     <>
       <Navbar />
-      
-      
+
+
       <div className="register-container">
         <div className="register-content">
           <div className="register-header">
-            <button 
-              className="back-button" 
+            <button
+              className="back-button"
               onClick={() => navigate('/')}
             >
               <X size={20} />
             </button>
-                                 <div className="header-content">
-                       <h1>Registro de Biblioteca</h1>
-                       <span className="header-separator">|</span>
-                       <p>Registrá tu biblioteca para comenzar a gestionar libros, socios y préstamos</p>
-                     </div>
+            <div className="header-content">
+              <h1>Registro de Biblioteca</h1>
+              <span className="header-separator">|</span>
+              <p>Registrá tu biblioteca para comenzar a gestionar libros, socios y préstamos</p>
+            </div>
           </div>
 
           <div className="register-sections">
@@ -354,7 +354,7 @@ function Register() {
                   <div className="form-group">
                     <label htmlFor="nombre">
                       <Building size={16} />
-                      Nombre de la biblioteca *
+                      Nombre de la biblioteca <span className="required-asterisk">*</span>
                     </label>
                     <input
                       type="text"
@@ -372,7 +372,7 @@ function Register() {
                   <div className="form-group">
                     <label htmlFor="direccion">
                       <MapPin size={16} />
-                      Dirección *
+                      Dirección <span className="required-asterisk">*</span>
                     </label>
                     <input
                       type="text"
@@ -478,7 +478,7 @@ function Register() {
                 <div className="form-group">
                   <label htmlFor="password">
                     <Lock size={16} />
-                    Contraseña de acceso *
+                    Contraseña de acceso <span className="required-asterisk">*</span>
                   </label>
                   <div className="password-input-container">
                     <input
@@ -508,15 +508,15 @@ function Register() {
                   <p className="password-hint">Usa al menos 6 caracteres con letras y números</p>
                 </div>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="submit-button"
                   disabled={isSubmitting}
                 >
                   <Save size={18} />
                   {isSubmitting ? 'Registrando...' : 'Registrar Biblioteca'}
                 </button>
-                
+
                 {/* Debug info */}
               </form>
             </section>

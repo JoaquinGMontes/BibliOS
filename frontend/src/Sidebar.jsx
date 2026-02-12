@@ -5,52 +5,41 @@ import {
 import './sidebar.css';
 import { useAuth } from './hooks/useAuth.js';
 import { useTheme } from './hooks/useTheme.js';
+import { useState } from 'react';
+import LogoutModal from './components/LogoutModal';
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      // Botones: [0] = Cerrar sesión (confirmar), [1] = Cancelar. okIndex 0 = sí cerrar.
-      const ok = await window.nativeDialog.confirm({
-        type: 'info',
-        title: 'biblios',
-        message: '¿Seguro que querés cerrar sesión?',
-        detail: 'Se cerrará tu sesión actual.',
-        buttons: ['Cerrar sesión', 'Cancelar'],
-        defaultId: 0,
-        cancelId: 1,
-        okIndex: 0,
-        noLink: true
-      });
-
-      if (ok) {
-        onClose();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-        await window.nativeDialog.ensureFocus();
-      }
-    } catch (error) {
-      console.error('Error en confirmación de logout:', error);
-      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-        onClose();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-      }
-    }
+  const handleLogoutClick = () => {
+    setIsLogoutModalOpen(true);
+    if (window.innerWidth < 1024) onClose();
   };
+
+  const confirmLogout = async () => {
+    setIsLogoutModalOpen(false);
+    onClose();
+    localStorage.removeItem('bibliotecaActiva');
+    localStorage.removeItem('authData');
+    logout();
+    navigate('/');
+  };
+
+
 
   const isActive = (path) => location.pathname === path ? 'active' : '';
 
   return (
     <>
+      <LogoutModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={confirmLogout}
+      />
       {/* Overlay para cerrar en móvil */}
       {isOpen && (
         <div className="sidebar-overlay" onClick={onClose} />
@@ -91,7 +80,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </button>
 
           <button
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="footer-btn logout"
             title="Cerrar sesión"
           >

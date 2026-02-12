@@ -37,7 +37,7 @@ class Validators {
     }
 
     static validateRequired(value, fieldName) {
-        
+
         const stringValue = String(value || ''); // Si tiene un valor thruty lo convierte a string, si no, devuelve una cadena vacía
         if (!value || stringValue.trim() === '') { // si value es falsy devuelve true
             throw new Error(`El campo "${fieldName}" es requerido`);
@@ -66,37 +66,37 @@ class DatabaseService {
     init() {
         try {
             console.log('Inicializando base de datos SQLite...');
-            
+
             // Crear directorio de datos si no existe
             const userDataPath = app.getPath('userData'); // Ruta al directorio de datos del usuario
             const dbDir = path.join(userDataPath, 'BibliOS'); // Ruta al directorio de la base de datos
-            
+
             // Crear directorio si no existe
             const fs = require('fs'); // Importa el modulo del sistema de archivos y se lo asigna a la variable fs
             if (!fs.existsSync(dbDir)) {
                 fs.mkdirSync(dbDir, { recursive: true });
             }
-            
+
             // Ruta de la base de datos
             this.dbPath = path.join(dbDir, 'biblios.db');// Nombre del arc de la BD
-            
+
             // Conectar a la base de datos
             this.db = new Database(this.dbPath);//Crea una conexión directa a ese archivo (el de arriba).
-            
+
             // Habilitar foreign keys
             this.db.pragma('foreign_keys = ON');
-            
+
             // Funcion para crear tablas (implementada abajo)
             this.createTables();
-            
+
             // Migrar tablas existentes si es necesario
             this.migrateTables();
-            
+
             console.log(`Base de datos SQLite inicializada en: ${this.dbPath}`);
-            
+
         } catch (error) {
             console.error('Error al inicializar la base de datos:', error);
-                throw error;
+            throw error;
         }
     }
 
@@ -150,14 +150,15 @@ class DatabaseService {
                 CREATE TABLE IF NOT EXISTS socios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT NOT NULL,
-                    email TEXT NOT NULL UNIQUE,
+                    email TEXT NOT NULL,
                     telefono TEXT,
                     direccion TEXT,
                     fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
                     estado TEXT DEFAULT 'activo',
                     observaciones TEXT,
                     bibliotecaId INTEGER,
-                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                    FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                    UNIQUE(email, bibliotecaId)
                 )
             `);
 
@@ -210,7 +211,7 @@ class DatabaseService {
             `);
 
             console.log('Tablas creadas correctamente');
-            
+
         } catch (error) {
             console.error('Error al crear tablas:', error);
             throw error;
@@ -221,48 +222,57 @@ class DatabaseService {
         try {
             // Verificar si la tabla socios existe
             const tableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='socios'").get();
-            
+
             if (tableInfo) {
                 // Obtener la estructura actual de la tabla
                 const pragmaInfo = this.db.prepare("PRAGMA table_info(socios)").all();
                 const emailColumn = pragmaInfo.find(col => col.name === 'email');
-                
-                // Si la columna email existe pero no tiene restricción UNIQUE
-                if (emailColumn && !emailColumn.notnull) {
-                    console.log('Migrando tabla socios: agregando restricción UNIQUE al email...');
-                    
+
+                // Verificar si tiene índice único global en email (buscando en sqlite_master)
+                const indexInfo = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='socios' AND sql LIKE '%UNIQUE%email%'").get();
+                // O verificar la definición de la tabla para ver si el email es UNIQUE globalmente
+                const tableDef = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='socios'").get();
+
+                const isGlobalUnique = tableDef && tableDef.sql.includes('email TEXT NOT NULL UNIQUE');
+
+                // Si la columna email existe pero es UNIQUE globalmente, hay que migrar
+                if (emailColumn && (isGlobalUnique || !emailColumn.notnull)) {
+                    console.log('Migrando tabla socios: cambiando restricción UNIQUE a (email, bibliotecaId)...');
+
                     // Crear tabla temporal con la nueva estructura
                     this.db.exec(`
                         CREATE TABLE socios_new (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             nombre TEXT NOT NULL,
-                            email TEXT NOT NULL UNIQUE,
+                            email TEXT NOT NULL,
                             telefono TEXT,
                             direccion TEXT,
                             fechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
                             estado TEXT DEFAULT 'activo',
                             observaciones TEXT,
                             bibliotecaId INTEGER,
-                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
+                            FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE,
+                            UNIQUE(email, bibliotecaId)
                         )
                     `);
-                    
-                    // Copiar datos existentes (eliminando duplicados si existen)
+
+                    // Copiar datos existentes
+                    // Nota: Si hay emails duplicados en la MISMA biblioteca, esto fallará, pero es el comportamiento esperado
+                    // Si hay emails duplicados en DIFERENTES bibliotecas, ahora será permitido
                     this.db.exec(`
                         INSERT INTO socios_new (id, nombre, email, telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId)
                         SELECT id, nombre, 
                                CASE WHEN email IS NULL OR email = '' THEN 'sin-email-' || id || '@temporal.com' ELSE email END,
                                telefono, direccion, fechaRegistro, estado, observaciones, bibliotecaId
                         FROM socios
-                        GROUP BY LOWER(TRIM(email))
                     `);
-                    
+
                     // Eliminar tabla antigua
                     this.db.exec('DROP TABLE socios');
-                    
+
                     // Renombrar tabla nueva
                     this.db.exec('ALTER TABLE socios_new RENAME TO socios');
-                    
+
                     // Recrear índices
                     this.db.exec(`
                         CREATE INDEX IF NOT EXISTS idx_socios_nombre ON socios(nombre);
@@ -270,32 +280,32 @@ class DatabaseService {
                         CREATE INDEX IF NOT EXISTS idx_socios_estado ON socios(estado);
                         CREATE INDEX IF NOT EXISTS idx_socios_email ON socios(email);
                     `);
-                    
-                    console.log('Migración completada: email ahora es único y requerido');
+
+                    console.log('Migración completada: email ahora es único por biblioteca');
                 }
             }
-            
+
             // Migrar tabla préstamos para cambiar CASCADE a SET NULL
             const prestamosTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='prestamos'").get();
-            
+
             if (prestamosTableInfo) {
                 // Verificar si necesita migración buscando la definición de la tabla
                 const tableDef = this.db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='prestamos'").get();
-                
+
                 console.log('Verificando migración de tabla préstamos...');
                 console.log('Definición actual:', tableDef ? tableDef.sql : 'No encontrada');
-                
+
                 // Migrar si tiene CASCADE o si no tiene SET NULL
                 const needsMigration = tableDef && (
-                    tableDef.sql.includes('ON DELETE CASCADE') || 
+                    tableDef.sql.includes('ON DELETE CASCADE') ||
                     !tableDef.sql.includes('ON DELETE SET NULL')
                 );
-                
+
                 console.log('¿Necesita migración?', needsMigration);
-                
+
                 if (needsMigration) {
                     console.log('Migrando tabla préstamos: cambiando CASCADE a SET NULL...');
-                    
+
                     // Crear tabla temporal con la nueva estructura
                     this.db.exec(`
                         CREATE TABLE prestamos_new (
@@ -313,20 +323,20 @@ class DatabaseService {
                             FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
                         )
                     `);
-                    
+
                     // Copiar datos existentes
                     this.db.exec(`
                         INSERT INTO prestamos_new (id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones)
                         SELECT id, libroId, socioId, bibliotecaId, fechaPrestamo, fechaDevolucion, fechaDevolucionReal, estado, observaciones
                         FROM prestamos
                     `);
-                    
+
                     // Eliminar tabla antigua
                     this.db.exec('DROP TABLE prestamos');
-                    
+
                     // Renombrar tabla nueva
                     this.db.exec('ALTER TABLE prestamos_new RENAME TO prestamos');
-                    
+
                     // Recrear índices
                     this.db.exec(`
                         CREATE INDEX IF NOT EXISTS idx_prestamos_estado ON prestamos(estado);
@@ -336,7 +346,7 @@ class DatabaseService {
                         CREATE INDEX IF NOT EXISTS idx_prestamos_fecha ON prestamos(fechaPrestamo);
                         CREATE INDEX IF NOT EXISTS idx_prestamos_devolucion ON prestamos(fechaDevolucion);
                     `);
-                    
+
                     console.log('Migración completada: préstamos ahora mantienen historial al eliminar libros/socios');
                 } else {
                     console.log('Tabla préstamos ya tiene la estructura correcta (SET NULL)');
@@ -365,35 +375,35 @@ class DatabaseService {
     }
 
     // ===== OPERACIONES DE BIBLIOTECAS =====
-    
+
     async createBiblioteca(bibliotecaData) {
         try {
             // VALIDACIONES
             Validators.validateRequired(bibliotecaData.nombre, 'nombre');
-            
+
             if (bibliotecaData.email && !Validators.validateEmail(bibliotecaData.email)) {
                 throw new Error('El email proporcionado no es válido');
             }
-            
+
             if (bibliotecaData.telefono && !Validators.validatePhone(bibliotecaData.telefono)) {
                 throw new Error('El teléfono debe tener al menos 10 dígitos');
             }
-            
+
             // Verificar si ya existe una biblioteca con ese nombre
             const existingLibrary = this.db.prepare('SELECT id FROM bibliotecas WHERE nombre = ?').get(bibliotecaData.nombre);
-            
+
             if (existingLibrary) {
                 throw new Error(`Ya existe una biblioteca con el nombre "${bibliotecaData.nombre}". Por favor, elige un nombre diferente.`);
             }
-            
+
             // Desactivar todas las bibliotecas existentes
             this.db.prepare('UPDATE bibliotecas SET activa = 0').run();
-            
+
             const stmt = this.db.prepare(`
                 INSERT INTO bibliotecas (nombre, direccion, telefono, email, responsable, horarios, descripcion, activa)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)
             `);
-            
+
             const result = stmt.run(
                 bibliotecaData.nombre,
                 bibliotecaData.direccion || null,
@@ -403,7 +413,7 @@ class DatabaseService {
                 bibliotecaData.horarios || null,
                 bibliotecaData.descripcion || null
             );
-            
+
             return this.getBibliotecaById(result.lastInsertRowid);
         } catch (error) {
             console.error('Error al crear biblioteca:', error);
@@ -445,20 +455,20 @@ class DatabaseService {
         try {
             const fields = [];
             const values = [];
-            
+
             Object.keys(updates).forEach(key => {
                 if (updates[key] !== undefined) {
                     fields.push(`${key} = ?`);
                     values.push(updates[key]);
                 }
             });
-            
+
             if (fields.length === 0) return false;
-            
+
             values.push(id);
             const stmt = this.db.prepare(`UPDATE bibliotecas SET ${fields.join(', ')} WHERE id = ?`);
             const result = stmt.run(...values);
-            
+
             return result.changes > 0;
         } catch (error) {
             console.error('Error al actualizar biblioteca:', error);
@@ -481,11 +491,11 @@ class DatabaseService {
         try {
             // Desactivar todas las bibliotecas
             this.db.prepare('UPDATE bibliotecas SET activa = 0').run();
-            
+
             // Activar la biblioteca seleccionada
             const stmt = this.db.prepare('UPDATE bibliotecas SET activa = 1 WHERE id = ?');
             const result = stmt.run(id);
-            
+
             return result.changes > 0;
         } catch (error) {
             console.error('Error al activar biblioteca:', error);
@@ -494,31 +504,31 @@ class DatabaseService {
     }
 
     // ===== OPERACIONES DE LIBROS =====
-    
+
     async createLibro(libroData) {
         try {
             // VALIDACIONES
             Validators.validateRequired(libroData.titulo, 'titulo');// Valida que el titulo no esté vacío
             Validators.validateRequired(libroData.autor, 'autor');// lo mismo el autor
             Validators.validateRequired(libroData.bibliotecaId, 'bibliotecaId'); // se asegura de que se asigne a una biblioteca
-            
+
             if (libroData.isbn && !Validators.validateISBN(libroData.isbn)) { //para que la sentencia derecha de true, el valid tiene que ser false(no cumple el formato)
                 throw new Error('El ISBN proporcionado no es válido (debe ser ISBN-10 o ISBN-13)');
             }
-            
+
             if (libroData.anioPublicacion && !Validators.validateYear(libroData.anioPublicacion)) { //lo mismo
                 throw new Error('El año de publicación no es válido');
             }
-            
+
             Validators.validatePositiveNumber(libroData.cantidad, 'cantidad');
             Validators.validatePositiveNumber(libroData.disponibles, 'disponibles');
-            
+
             // Verificar que la biblioteca existe
             const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(libroData.bibliotecaId); //Una query que se fija en la table bibliotecas si existe una con ese id (el que luego ocupara el lugar del "?" en la query)
             if (!biblioteca) {
                 throw new Error('La biblioteca especificada no existe');
             }
-            
+
             const stmt = this.db.prepare(`
                 INSERT INTO libros (titulo, autor, isbn, categoria, editorial, lugarPublicacion, anioPublicacion, edicion, cantidad, disponibles, paginas, clasificacion, ubicacion, estado, descripcion, cabecera, numeroControl, bibliotecaId)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -545,7 +555,7 @@ class DatabaseService {
                 libroData.numeroControl || null,
                 libroData.bibliotecaId
             );
-            
+
             return this.getLibroById(result.lastInsertRowid); // usa la funcion getLibroById que es una funcion que ejecutauna query select para devolver el libro recien creado
         } catch (error) {
             console.error('Error al crear libro:', error);
@@ -558,36 +568,36 @@ class DatabaseService {
             // OPTIMIZACIÓN: Usar índices y LIMIT para paginación
             let query = 'SELECT * FROM libros WHERE bibliotecaId = ?';
             const params = [bibliotecaId];
-            
+
             if (filters.search) { //si escribio algo en el campo de busqueda "nombre" lo toma como thruty y entra, si puso 0 o nada no
                 query += ' AND (titulo LIKE ? OR autor LIKE ? OR isbn LIKE ?)';
                 const searchTerm = `%${filters.search}%`; //agrega % antes y despues del termino de busqueda para que busque coincidencias en cualquier parte del texto (como hacemos en sql server)
-                params.push(searchTerm, searchTerm, searchTerm); 
+                params.push(searchTerm, searchTerm, searchTerm);
             }
-            
+
             if (filters.categoria) {
                 query += ' AND categoria = ?';
                 params.push(filters.categoria); //agrega el valor del filtro a los parametros de la query
             }
-            
+
             if (filters.estado) {
                 query += ' AND estado = ?';
                 params.push(filters.estado); // lo mismo
             }
-            
+
             query += ' ORDER BY titulo ASC';  // agrupa de forma ascendente alfabeticamente
-            
+
             // Agregar LIMIT para paginación si se especifica
             if (filters.limit) {
                 query += ' LIMIT ?';
                 params.push(filters.limit);
-                
+
                 if (filters.offset) {
                     query += ' OFFSET ?';
                     params.push(filters.offset);
                 }
             }
-            
+
             const stmt = this.db.prepare(query); //ahora si deja la query lista y abajo le pasa el array de parametros
             return stmt.all(...params);
         } catch (error) {
@@ -610,20 +620,20 @@ class DatabaseService {
         try {
             const fields = []; //fields guarda fragmentos de texto tipo "titulo = ?", "autor = ?", etc
             const values = []; //values guarda los valores correspondientes a cada campo
-            
+
             Object.keys(updates).forEach(key => { // obtiene los nombres de las propiedades del objeto.(por eso los keys) ej: "autor","titulo",etc.
                 if (updates[key] !== undefined) { // verifica que el valor sea undefined
                     fields.push(`${key} = ?`); // agrega el fragmento de texto al array fields (la key)
                     values.push(updates[key]); // agrega el valor (el value) correspondiente del campo ingresado para modificar al array values
                 }
             });
-            
+
             if (fields.length === 0) return false;
-            
+
             values.push(id);
             const stmt = this.db.prepare(`UPDATE libros SET ${fields.join(', ')} WHERE id = ?`);
             const result = stmt.run(...values);
-            
+
             return result.changes > 0;
         } catch (error) {
             console.error('Error al actualizar libro:', error);
@@ -637,23 +647,23 @@ class DatabaseService {
             // Verificar si hay préstamos activos asociados a este libro
             const prestamosActivos = this.db.prepare('SELECT COUNT(*) as count FROM prestamos WHERE libroId = ? AND estado = ?').get(id, 'activo');
             // con una query de sql se fija el numero de prestamos activos de este libro
-            if (prestamosActivos.count > 0) { 
+            if (prestamosActivos.count > 0) {
                 throw new Error(`No se puede eliminar el libro porque tiene ${prestamosActivos.count} préstamo(s) activo(s). Debe devolver todos los préstamos antes de eliminar el libro.`);
             }
-            
+
             // IMPORTANTE: Poner en NULL los libroId de los préstamos ANTES de eliminar el libro
             // Esto mantiene el historial de préstamos incluso después de eliminar el libro
             console.log(`Poniendo en NULL los libroId de los préstamos para el libro ${id}...`);
             const updateResult = this.db.prepare('UPDATE prestamos SET libroId = NULL WHERE libroId = ?').run(id);
             console.log(`Actualizados ${updateResult.changes} préstamos`);  //actualiza a null la cant de prestamos de este libro
-            
+
             // Ahora eliminar el libro
             const stmt = this.db.prepare('DELETE FROM libros WHERE id = ?');
             const result = stmt.run(id);
-            
+
             return result.changes > 0;
         });  // por eso termina aca por mas que esten separadas las lineas de la query
-        
+
         try {
             return transaction(id);
         } catch (error) {
@@ -663,41 +673,41 @@ class DatabaseService {
     }
 
     // ===== OPERACIONES DE SOCIOS =====
-    
+
     async createSocio(socioData) {
         try {
             // VALIDACIONES
             Validators.validateRequired(socioData.nombre, 'nombre');
             Validators.validateRequired(socioData.email, 'email');
             Validators.validateRequired(socioData.bibliotecaId, 'bibliotecaId');
-            
+
             if (!Validators.validateEmail(socioData.email)) {
                 throw new Error('El email proporcionado no es válido');
             }
-            
+
             if (socioData.telefono && !Validators.validatePhone(socioData.telefono)) {
                 throw new Error('El teléfono debe tener al menos 10 dígitos');
             }
-            
+
             // Verificar que la biblioteca existe
             const biblioteca = this.db.prepare('SELECT id FROM bibliotecas WHERE id = ?').get(socioData.bibliotecaId);
             if (!biblioteca) {
                 throw new Error('La biblioteca especificada no existe');
             }
-            
-            // Verificar si ya existe un socio con ese email (globalmente, no solo por biblioteca)
+
+            // Verificar si ya existe un socio con ese email en ESTA biblioteca
             const emailNormalizado = socioData.email.toLowerCase().trim();
-            const existingSocio = this.db.prepare('SELECT id, nombre FROM socios WHERE LOWER(TRIM(email)) = ?').get(emailNormalizado);
-            
+            const existingSocio = this.db.prepare('SELECT id, nombre FROM socios WHERE LOWER(TRIM(email)) = ? AND bibliotecaId = ?').get(emailNormalizado, socioData.bibliotecaId);
+
             if (existingSocio) {
-                throw new Error(`Ya existe un socio con el email "${socioData.email}". El email debe ser único.`);
+                throw new Error(`Ya existe un socio con el email "${socioData.email}" en esta biblioteca.`);
             }
-            
+
             const stmt = this.db.prepare(`
                 INSERT INTO socios (nombre, email, telefono, direccion, estado, observaciones, bibliotecaId)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
-            
+
             const result = stmt.run(
                 socioData.nombre,
                 socioData.email,
@@ -707,7 +717,7 @@ class DatabaseService {
                 socioData.observaciones || null,
                 socioData.bibliotecaId
             );
-            
+
             return this.getSocioById(result.lastInsertRowid);
         } catch (error) {
             console.error('Error al crear socio:', error);
@@ -720,31 +730,31 @@ class DatabaseService {
             // OPTIMIZACIÓN: Usar índices y LIMIT para paginación
             let query = 'SELECT * FROM socios WHERE bibliotecaId = ?';
             const params = [bibliotecaId];
-            
+
             if (filters.search) {
                 query += ' AND (nombre LIKE ? OR email LIKE ?)';
                 const searchTerm = `%${filters.search}%`;
                 params.push(searchTerm, searchTerm);
             }
-            
+
             if (filters.estado) {
                 query += ' AND estado = ?';
                 params.push(filters.estado);
             }
-            
+
             query += ' ORDER BY nombre ASC';
-            
+
             // Agregar LIMIT para paginación si se especifica
             if (filters.limit) {
                 query += ' LIMIT ?';
                 params.push(filters.limit);
-                
+
                 if (filters.offset) {
                     query += ' OFFSET ?';
                     params.push(filters.offset);
                 }
             }
-            
+
             const stmt = this.db.prepare(query);
             return stmt.all(...params);
         } catch (error) {
@@ -771,32 +781,39 @@ class DatabaseService {
                 if (!Validators.validateEmail(updates.email)) {
                     throw new Error('El email proporcionado no es válido');
                 }
-                
-                // Verificar que no exista otro socio con ese email
+
+                // Verificar que no exista otro socio con ese email en LA MISMA biblioteca
                 const emailNormalizado = updates.email.toLowerCase().trim();
-                const existingSocio = this.db.prepare('SELECT id FROM socios WHERE LOWER(TRIM(email)) = ? AND id != ?').get(emailNormalizado, id);
-                
+
+                // Primero obtenemos el socio actual para saber su bibliotecaId
+                const currentSocio = this.getSocioById(id);
+                if (!currentSocio) {
+                    throw new Error('El socio que intenta actualizar no existe');
+                }
+
+                const existingSocio = this.db.prepare('SELECT id FROM socios WHERE LOWER(TRIM(email)) = ? AND bibliotecaId = ? AND id != ?').get(emailNormalizado, currentSocio.bibliotecaId, id);
+
                 if (existingSocio) {
-                    throw new Error(`Ya existe un socio con el email "${updates.email}". El email debe ser único.`);
+                    throw new Error(`Ya existe un socio con el email "${updates.email}" en esta biblioteca.`);
                 }
             }
-            
+
             const fields = [];
             const values = [];
-            
+
             Object.keys(updates).forEach(key => {
                 if (updates[key] !== undefined) {
                     fields.push(`${key} = ?`);
                     values.push(updates[key]);
                 }
             });
-            
+
             if (fields.length === 0) return false;
-            
+
             values.push(id);
             const stmt = this.db.prepare(`UPDATE socios SET ${fields.join(', ')} WHERE id = ?`);
             const result = stmt.run(...values);
-            
+
             return result.changes > 0;
         } catch (error) {
             console.error('Error al actualizar socio:', error);
@@ -809,24 +826,24 @@ class DatabaseService {
         const transaction = this.db.transaction((id) => {
             // Verificar si hay préstamos activos asociados a este socio
             const prestamosActivos = this.db.prepare('SELECT COUNT(*) as count FROM prestamos WHERE socioId = ? AND estado = ?').get(id, 'activo');
-            
+
             if (prestamosActivos.count > 0) {
                 throw new Error(`No se puede eliminar el socio porque tiene ${prestamosActivos.count} préstamo(s) activo(s). Debe devolver todos los préstamos antes de eliminar el socio.`);
             }
-            
+
             // IMPORTANTE: Poner en NULL los socioId de los préstamos ANTES de eliminar el socio
             // Esto mantiene el historial de préstamos incluso después de eliminar el socio
             console.log(`Poniendo en NULL los socioId de los préstamos para el socio ${id}...`);
             const updateResult = this.db.prepare('UPDATE prestamos SET socioId = NULL WHERE socioId = ?').run(id);
             console.log(`Actualizados ${updateResult.changes} préstamos`);
-            
+
             // Ahora eliminar el socio
             const stmt = this.db.prepare('DELETE FROM socios WHERE id = ?');
             const result = stmt.run(id);
-            
+
             return result.changes > 0;
         });
-        
+
         try {
             return transaction(id);
         } catch (error) {
@@ -836,7 +853,7 @@ class DatabaseService {
     }
 
     // ===== OPERACIONES DE PRÉSTAMOS =====
-    
+
     async createPrestamo(prestamoData) {
         // TRANSACCIÓN: Usar transacción para garantizar consistencia
         const transaction = this.db.transaction((prestamoData) => {
@@ -844,30 +861,30 @@ class DatabaseService {
             if (!prestamoData.libroId || !prestamoData.socioId || !prestamoData.bibliotecaId) {
                 throw new Error('Los campos libroId, socioId y bibliotecaId son requeridos');
             }
-            
+
             // Verificar que el libro existe
             const libro = this.db.prepare('SELECT * FROM libros WHERE id = ?').get(prestamoData.libroId);
             if (!libro) {
                 throw new Error('El libro especificado no existe');
             }
-            
+
             // Verificar que el socio existe
             const socio = this.db.prepare('SELECT * FROM socios WHERE id = ?').get(prestamoData.socioId);
             if (!socio) {
                 throw new Error('El socio especificado no existe');
             }
-            
+
             // Verificar que el libro esté disponible
             if (libro.disponibles <= 0) {
                 throw new Error('El libro no está disponible para préstamo');
             }
-            
+
             // Crear el préstamo
             const stmt = this.db.prepare(`
                 INSERT INTO prestamos (libroId, socioId, bibliotecaId, fechaDevolucion, observaciones)
                 VALUES (?, ?, ?, ?, ?)
             `);
-            
+
             const result = stmt.run(
                 prestamoData.libroId,
                 prestamoData.socioId,
@@ -875,7 +892,7 @@ class DatabaseService {
                 prestamoData.fechaDevolucion,
                 prestamoData.observaciones || null
             );
-            
+
             // Actualizar disponibilidad del libro
             const updateStmt = this.db.prepare(`
                 UPDATE libros 
@@ -884,10 +901,10 @@ class DatabaseService {
                 WHERE id = ?
             `);
             updateStmt.run(prestamoData.libroId);
-            
+
             return result.lastInsertRowid;
         });
-        
+
         try {
             const prestamoId = transaction(prestamoData);
             return this.getPrestamoById(prestamoId);
@@ -911,14 +928,14 @@ class DatabaseService {
                 WHERE p.bibliotecaId = ?
             `;
             const params = [bibliotecaId];
-            
+
             if (filters.estado) {
                 query += ' AND p.estado = ?';
                 params.push(filters.estado);
             }
-            
+
             query += ' ORDER BY p.fechaPrestamo DESC';
-            
+
             const stmt = this.db.prepare(query);
             return stmt.all(...params);
         } catch (error) {
@@ -946,7 +963,7 @@ class DatabaseService {
             throw error;
         }
     }
-///////////////////////////////////////////////// Estado de disponibilidad del libro y cambio de estado del prestamo
+    ///////////////////////////////////////////////// Estado de disponibilidad del libro y cambio de estado del prestamo
     async devolverLibro(prestamoId) {
         // TRANSACCIÓN: Usa transacción para garantizar consistencia
         const transaction = this.db.transaction((prestamoId) => {
@@ -966,12 +983,12 @@ class DatabaseService {
             if (!prestamo) {
                 throw new Error('Préstamo no encontrado');
             }
-            
+
             // Verificar que el préstamo no esté ya completado
             if (prestamo.estado === 'completado') {
                 throw new Error('El préstamo ya está completado');
             }
-            
+
             // Actualizar el préstamo
             const updatePrestamo = this.db.prepare(`
                 UPDATE prestamos 
@@ -979,7 +996,7 @@ class DatabaseService {
                 WHERE id = ?
             `);
             const result = updatePrestamo.run(prestamoId);
-            
+
             if (result.changes > 0 && prestamo.libroId) {  //si se detecto un cambio y el id del libro no es null updateamos el estado de disponibilidad del libro
                 // Actualizar disponibilidad del libro solo si el libro existe
                 const updateLibro = this.db.prepare(`
@@ -990,10 +1007,10 @@ class DatabaseService {
                 `);
                 updateLibro.run(prestamo.libroId);
             }
-            
+
             return result.changes > 0;
         });
-        
+
         try {
             return transaction(prestamoId);
         } catch (error) {
@@ -1006,20 +1023,20 @@ class DatabaseService {
         try {
             const fields = [];
             const values = [];
-            
+
             Object.keys(updates).forEach(key => {
                 if (updates[key] !== undefined) {
                     fields.push(`${key} = ?`);
                     values.push(updates[key]);
                 }
             });
-            
+
             if (fields.length === 0) return false;
-            
+
             values.push(id);
             const stmt = this.db.prepare(`UPDATE prestamos SET ${fields.join(', ')} WHERE id = ?`);
             const result = stmt.run(...values);
-            
+
             return result.changes > 0;
         } catch (error) {
             console.error('Error al actualizar préstamo:', error);
@@ -1032,11 +1049,11 @@ class DatabaseService {
         const transaction = this.db.transaction((id) => {
             // Obtener el préstamo para verificar su estado
             const prestamo = this.db.prepare('SELECT * FROM prestamos WHERE id = ?').get(id);
-            
+
             if (!prestamo) {
                 throw new Error('Préstamo no encontrado');
             }
-            
+
             // Si el préstamo está activo, devolver el libro antes de eliminar
             if (prestamo.estado === 'activo' && prestamo.libroId) {
                 // Aumentar disponibilidad del libro
@@ -1048,14 +1065,14 @@ class DatabaseService {
                 `);
                 updateLibro.run(prestamo.libroId);
             }
-            
+
             // Eliminar el préstamo
             const stmt = this.db.prepare('DELETE FROM prestamos WHERE id = ?');
             const result = stmt.run(id);
-            
+
             return result.changes > 0;
         });
-        
+
         try {
             return transaction(id);
         } catch (error) {
@@ -1065,7 +1082,7 @@ class DatabaseService {
     }
 
     // ===== ESTADÍSTICAS Y REPORTES =====
-    
+
     async getBibliotecaStats(bibliotecaId) {
         try {
             // OPTIMIZACIÓN: Consulta única con UNION ALL para obtener todas las estadísticas
@@ -1108,13 +1125,13 @@ class DatabaseService {
                 FROM prestamos 
                 WHERE bibliotecaId = ? AND estado = 'completado'
             `);
-            
+
             const results = stmt.all(bibliotecaId, bibliotecaId, bibliotecaId, bibliotecaId, bibliotecaId);
-            
+
             // Convertir resultados en objeto
             const stats = {};
             results.forEach(row => {
-                switch(row.tipo) {
+                switch (row.tipo) {
                     case 'libros':
                         stats.totalLibros = row.count;
                         break;
@@ -1132,7 +1149,7 @@ class DatabaseService {
                         break;
                 }
             });
-            
+
             return stats;
         } catch (error) {
             console.error('Error al obtener estadísticas:', error);
@@ -1154,7 +1171,7 @@ class DatabaseService {
                 GROUP BY strftime('%Y-%m', fechaPrestamo)
                 ORDER BY mes ASC
             `);
-            
+
             return stmt.all(bibliotecaId, meses);
         } catch (error) {
             console.error('Error al obtener préstamos por mes:', error);
@@ -1174,7 +1191,7 @@ class DatabaseService {
                 GROUP BY categoria
                 ORDER BY cantidad DESC
             `);
-            
+
             return stmt.all(bibliotecaId);
         } catch (error) {
             console.error('Error al obtener libros por categoría:', error);
@@ -1195,9 +1212,9 @@ class DatabaseService {
                 GROUP BY strftime('%Y-%m', fechaRegistro)
                 ORDER BY mes ASC
             `);
-            
+
             const resultados = stmt.all(bibliotecaId, meses);
-            
+
             // Calcular total acumulado por mes
             let totalAcumulado = 0;
             return resultados.map(item => {
@@ -1215,7 +1232,7 @@ class DatabaseService {
     }
 
     // ===== UTILIDADES =====
-    
+
     async close() {
         if (this.db) {
             this.db.close();
@@ -1228,7 +1245,7 @@ class DatabaseService {
             // Para SQLite, simplemente copiar el archivo
             const fs = require('fs');
             fs.copyFileSync(this.dbPath, destinationPath);
-                return true;
+            return true;
         } catch (error) {
             console.error('Error al hacer backup:', error);
             return false;
@@ -1236,7 +1253,7 @@ class DatabaseService {
     }
 
     // ===== MÉTODOS DE INICIALIZACIÓN =====
-    
+
     async insertSampleData(bibliotecaId) {
         try {
             // Insertar libros de ejemplo
@@ -1335,7 +1352,7 @@ class DatabaseService {
     async insertUTNSampleData(bibliotecaId) {
         try {
             console.log('Creando datos de muestra para UTN-FRLP...');
-            
+
             // Libros de muestra más extensos
             const librosUTN = [
                 { titulo: 'Introducción a la Programación', autor: 'Dr. Carlos Martínez', isbn: '978-1234567890', categoria: 'Informática', editorial: 'UTN Press', anioPublicacion: 2020, cantidad: 5, disponibles: 3, ubicacion: 'Estante A-1', descripcion: 'Fundamentos de programación', bibliotecaId },
@@ -1398,20 +1415,20 @@ class DatabaseService {
 
             console.log('Creando préstamos de muestra...');
             const prestamosInsertados = [];
-            
+
             // Crear algunos préstamos completados (historial)
             for (let i = 0; i < 30; i++) {
                 const libroRandom = librosInsertados[Math.floor(Math.random() * librosInsertados.length)];
                 const socioRandom = sociosInsertados[Math.floor(Math.random() * sociosInsertados.length)];
-                
+
                 // Fecha aleatoria en los últimos 6 meses
                 const fechaPrestamo = new Date();
                 fechaPrestamo.setMonth(fechaPrestamo.getMonth() - Math.floor(Math.random() * 6));
                 fechaPrestamo.setDate(fechaPrestamo.getDate() - Math.floor(Math.random() * 30));
-                
+
                 const fechaDevolucion = new Date(fechaPrestamo);
                 fechaDevolucion.setDate(fechaDevolucion.getDate() + 7 + Math.floor(Math.random() * 14));
-                
+
                 try {
                     // Crear préstamo completado
                     const prestamo = await this.createPrestamo({
@@ -1421,7 +1438,7 @@ class DatabaseService {
                         fechaDevolucion: fechaDevolucion.toISOString(),
                         observaciones: 'Préstamo de muestra'
                     });
-                    
+
                     // Completar el préstamo
                     await this.devolverLibro(prestamo.id);
                     prestamosInsertados.push(prestamo);
@@ -1434,14 +1451,14 @@ class DatabaseService {
             for (let i = 0; i < 8; i++) {
                 const libroRandom = librosInsertados[Math.floor(Math.random() * librosInsertados.length)];
                 const socioRandom = sociosInsertados[Math.floor(Math.random() * sociosInsertados.length)];
-                
+
                 // Fecha aleatoria en los últimos 15 días
                 const fechaPrestamo = new Date();
                 fechaPrestamo.setDate(fechaPrestamo.getDate() - Math.floor(Math.random() * 15));
-                
+
                 const fechaDevolucion = new Date(fechaPrestamo);
                 fechaDevolucion.setDate(fechaDevolucion.getDate() + 14);
-                
+
                 try {
                     const prestamo = await this.createPrestamo({
                         libroId: libroRandom.id,
@@ -1457,7 +1474,7 @@ class DatabaseService {
             }
 
             console.log('Datos de muestra creados exitosamente');
-            
+
             return {
                 success: true,
                 message: 'Datos de muestra UTN-FRLP insertados correctamente',
@@ -1472,7 +1489,7 @@ class DatabaseService {
     }
 
     // ===== INFORMACIÓN DEL SISTEMA =====
-    
+
     getDatabaseInfo() {
         return {
             type: 'sqlite',
@@ -1484,15 +1501,15 @@ class DatabaseService {
     async createUTNLibrary() {
         try {
             console.log('Creando biblioteca UTN-FRLP...');
-            
+
             // Verificar si ya existe
             const existingLibrary = this.db.prepare('SELECT id FROM bibliotecas WHERE nombre = ?').get('UTN-FRLP');
-            
+
             if (existingLibrary) {
                 console.log('La biblioteca UTN-FRLP ya existe');
                 return { exists: true, id: existingLibrary.id };
             }
-            
+
             // Crear la biblioteca
             const biblioteca = await this.createBiblioteca({
                 nombre: 'UTN-FRLP',
@@ -1503,14 +1520,14 @@ class DatabaseService {
                 horarios: 'Lunes a Viernes: 8:00 - 20:00',
                 descripcion: 'Biblioteca de la Universidad Tecnológica Nacional - Facultad Regional La Plata'
             });
-            
+
             console.log('Biblioteca UTN-FRLP creada con ID:', biblioteca.id);
-            
+
             // Insertar datos de muestra
             const result = await this.insertUTNSampleData(biblioteca.id);
-            
+
             console.log('Datos de muestra insertados:', result);
-            
+
             return {
                 exists: false,
                 biblioteca: biblioteca,
