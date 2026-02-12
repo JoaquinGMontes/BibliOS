@@ -9,7 +9,7 @@ class DatabaseHandlers {
 
     setupHandlers() {
         // ===== MANEJADORES DE BIBLIOTECAS =====
-        
+
         ipcMain.handle('database:createBiblioteca', async (event, bibliotecaData) => {
             try {
                 return await this.db.createBiblioteca(bibliotecaData);
@@ -73,6 +73,15 @@ class DatabaseHandlers {
             }
         });
 
+        ipcMain.handle('database:loginBiblioteca', async (event, { nombre, password }) => {
+            try {
+                return await this.db.loginBiblioteca(nombre, password);
+            } catch (error) {
+                console.error('Error en loginBiblioteca:', error);
+                throw error;
+            }
+        });
+
         ipcMain.handle('database:createUTNLibrary', async () => {
             try {
                 return await this.db.createUTNLibrary();
@@ -83,7 +92,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE LIBROS =====
-        
+
         ipcMain.handle('database:createLibro', async (event, libroData) => {
             try {
                 return await this.db.createLibro(libroData);
@@ -130,7 +139,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE SOCIOS =====
-        
+
         ipcMain.handle('database:createSocio', async (event, socioData) => {
             try {
                 return await this.db.createSocio(socioData);
@@ -177,7 +186,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE PRÉSTAMOS =====
-        
+
         ipcMain.handle('database:createPrestamo', async (event, prestamoData) => {
             try {
                 return await this.db.createPrestamo(prestamoData);
@@ -233,7 +242,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE ESTADÍSTICAS =====
-        
+
         ipcMain.handle('database:getBibliotecaStats', async (event, bibliotecaId) => {
             try {
                 return await this.db.getBibliotecaStats(bibliotecaId);
@@ -271,7 +280,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE UTILIDADES =====
-        
+
         ipcMain.handle('database:backup', async (event, destinationPath) => {
             try {
                 return await this.db.backup(destinationPath);
@@ -292,7 +301,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE DATOS DE EJEMPLO =====
-        
+
         ipcMain.handle('database:insertSampleData', async (event, bibliotecaId) => {
             try {
                 return await this.db.insertSampleData(bibliotecaId);
@@ -303,7 +312,7 @@ class DatabaseHandlers {
         });
 
         // ===== MANEJADORES DE VENTANA =====
-        
+
         ipcMain.handle('window:focus', async () => {
             try {
                 const { BrowserWindow } = require('electron');
@@ -331,35 +340,36 @@ class DatabaseHandlers {
         ipcMain.removeHandler('database:updateBiblioteca');
         ipcMain.removeHandler('database:deleteBiblioteca');
         ipcMain.removeHandler('database:activateBiblioteca');
-        
+        ipcMain.removeHandler('database:loginBiblioteca');
+
         ipcMain.removeHandler('database:createLibro');
         ipcMain.removeHandler('database:getLibros');
         ipcMain.removeHandler('database:getLibroById');
         ipcMain.removeHandler('database:updateLibro');
         ipcMain.removeHandler('database:deleteLibro');
-        
+
         ipcMain.removeHandler('database:createSocio');
         ipcMain.removeHandler('database:getSocios');
         ipcMain.removeHandler('database:getSocioById');
         ipcMain.removeHandler('database:updateSocio');
         ipcMain.removeHandler('database:deleteSocio');
-        
+
         ipcMain.removeHandler('database:createPrestamo');
         ipcMain.removeHandler('database:getPrestamos');
         ipcMain.removeHandler('database:getPrestamoById');
         ipcMain.removeHandler('database:devolverLibro');
         ipcMain.removeHandler('database:updatePrestamo');
         ipcMain.removeHandler('database:deletePrestamo');
-        
+
         ipcMain.removeHandler('database:getBibliotecaStats');
         ipcMain.removeHandler('database:getPrestamosPorMes');
         ipcMain.removeHandler('database:getLibrosPorCategoria');
         ipcMain.removeHandler('database:getSociosPorMes');
-        
+
         ipcMain.removeHandler('database:backup');
         ipcMain.removeHandler('database:close');
         ipcMain.removeHandler('database:insertSampleData');
-        
+
         ipcMain.removeHandler('window:focus');
     }
 }

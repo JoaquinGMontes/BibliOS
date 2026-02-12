@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const { app } = require('electron');
+const crypto = require('crypto');
 
 // ===== VALIDADORES =====
 class Validators {
@@ -113,6 +114,8 @@ class DatabaseService {
                     responsable TEXT,
                     horarios TEXT,
                     descripcion TEXT,
+                    password TEXT,
+                    salt TEXT,
                     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
                     activa BOOLEAN DEFAULT 0
                 )
@@ -546,6 +549,27 @@ class DatabaseService {
             console.error('Error al migrar tablas:', error);
             // No lanzar error para no bloquear la aplicación
         }
+
+        // Migración: Agregar password y salt a bibliotecas si no existen
+        try {
+            const tableInfo = this.db.prepare("PRAGMA table_info(bibliotecas)").all();
+            const colNames = tableInfo.map(c => c.name);
+
+            if (!colNames.includes('password')) {
+                console.log('Migrando bibliotecas: agregando columnas de autenticación...');
+                this.db.exec("ALTER TABLE bibliotecas ADD COLUMN password TEXT");
+                this.db.exec("ALTER TABLE bibliotecas ADD COLUMN salt TEXT");
+
+                // Establecer contraseña por defecto '123456' para bibliotecas existentes
+                const salt = crypto.randomBytes(16).toString('hex');
+                const hash = crypto.pbkdf2Sync('123456', salt, 1000, 64, 'sha512').toString('hex');
+
+                this.db.prepare("UPDATE bibliotecas SET password = ?, salt = ?").run(hash, salt);
+                console.log('Bibliotecas migradas con contraseña por defecto "123456"');
+            }
+        } catch (error) {
+            console.error('Error al migrar autenticación:', error);
+        }
     }
 
     // ===== OPERACIONES DE BIBLIOTECAS =====
@@ -588,6 +612,16 @@ class DatabaseService {
                 bibliotecaData.descripcion || null
             );
 
+            // Si hay contraseña, la guardamos (asumiendo que viene en bibliotecaData.password)
+            // Si no viene, generamos una por defecto o dejamos null (pero mejor exigirla)
+            if (bibliotecaData.password) {
+                const salt = crypto.randomBytes(16).toString('hex');
+                const hash = crypto.pbkdf2Sync(bibliotecaData.password, salt, 1000, 64, 'sha512').toString('hex');
+
+                this.db.prepare("UPDATE bibliotecas SET password = ?, salt = ? WHERE id = ?")
+                    .run(hash, salt, result.lastInsertRowid);
+            }
+
             return this.getBibliotecaById(result.lastInsertRowid);
         } catch (error) {
             console.error('Error al crear biblioteca:', error);
@@ -597,7 +631,8 @@ class DatabaseService {
 
     async getBibliotecas() {
         try {
-            const stmt = this.db.prepare('SELECT * FROM bibliotecas ORDER BY fechaCreacion DESC');
+            // No devolver password ni salt
+            const stmt = this.db.prepare('SELECT id, nombre, direccion, telefono, email, responsable, horarios, descripcion, fechaCreacion, activa FROM bibliotecas ORDER BY fechaCreacion DESC');
             return stmt.all();
         } catch (error) {
             console.error('Error al obtener bibliotecas:', error);
@@ -673,6 +708,39 @@ class DatabaseService {
             return result.changes > 0;
         } catch (error) {
             console.error('Error al activar biblioteca:', error);
+            throw error;
+        }
+    }
+
+    async loginBiblioteca(nombre, password) {
+        try {
+            const biblioteca = this.db.prepare('SELECT * FROM bibliotecas WHERE nombre = ?').get(nombre);
+
+            if (!biblioteca) {
+                throw new Error('Biblioteca no encontrada');
+            }
+
+            if (!biblioteca.password || !biblioteca.salt) {
+                // Si es una biblioteca antigua sin password (aunque la migración debería haberlo arreglado)
+                // Permitir acceso si no tiene pass configurada (o forzar update, depende política)
+                // Para seguridad, requerimos pass.
+                throw new Error('Esta biblioteca no tiene contraseña configurada. Contacte soporte.');
+            }
+
+            const hash = crypto.pbkdf2Sync(password, biblioteca.salt, 1000, 64, 'sha512').toString('hex');
+
+            if (hash === biblioteca.password) {
+                // Login exitoso: activar biblioteca
+                await this.activateBiblioteca(biblioteca.id);
+
+                // Devolver datos sin password/salt
+                const { password, salt, ...safeBiblioteca } = biblioteca;
+                return safeBiblioteca;
+            } else {
+                throw new Error('Contraseña incorrecta');
+            }
+        } catch (error) {
+            console.error('Error en login:', error);
             throw error;
         }
     }

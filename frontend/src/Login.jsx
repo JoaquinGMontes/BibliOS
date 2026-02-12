@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Library, LogIn, X, AlertCircle, Lock, Eye, EyeOff, Sparkles, Activity, CheckCircle } from 'lucide-react';
 import './Login.css';
 import Navbar from './Navbar.jsx';
+import { useData } from './context/DataContext.jsx';
 
 function Login() {
   const navigate = useNavigate();
+  const { updateLibrary } = useData();
   const [libraryName, setLibraryName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -68,32 +70,18 @@ function Login() {
     try {
       // Verificar si estamos en Electron
       if (window.electronAPI) {
-        // Usar la base de datos SQLite
-        const bibliotecas = await window.electronAPI.getBibliotecas();
-
-        // Buscar la biblioteca por nombre
-        const biblioteca = bibliotecas.find(bib =>
-          bib.nombre.toLowerCase().includes(libraryName.toLowerCase())
-        );
+        // Usar login del backend
+        const biblioteca = await window.electronAPI.loginBiblioteca(libraryName, password);
 
         if (biblioteca) {
-          // Activar la biblioteca encontrada
-          await window.electronAPI.activateBiblioteca(biblioteca.id);
+          // Guardar en localStorage para compatibilidad
+          // localStorage.setItem('bibliotecaActiva', JSON.stringify(biblioteca)); // updateLibrary ya lo hace
 
-          // Guardar en localStorage para compatibilidad con el sistema de auth
-          localStorage.setItem('bibliotecaActiva', JSON.stringify(biblioteca));
-          localStorage.setItem('authData', JSON.stringify({
-            libraryId: biblioteca.id,
-            authMethod: 'password',
-            hashedValue: '123456789', // Por ahora usar un hash simple
-            salt: 'mock-salt-1',
-            createdAt: new Date().toISOString()
-          }));
+          // Actualizar el contexto global
+          updateLibrary(biblioteca);
 
           // Redirigir al dashboard
           navigate('/dashboard');
-        } else {
-          setError('Biblioteca no encontrada. Verifica el nombre o crea una nueva biblioteca.');
         }
       } else {
         // Fallback para desarrollo sin Electron
@@ -147,7 +135,11 @@ function Login() {
 
         if (bibliotecaActiva) {
           // Guardar en localStorage
-          localStorage.setItem('bibliotecaActiva', JSON.stringify(bibliotecaActiva));
+          // localStorage.setItem('bibliotecaActiva', JSON.stringify(bibliotecaActiva)); // updateLibrary ya lo hace
+
+          // Actualizar el contexto global
+          updateLibrary(bibliotecaActiva);
+
           localStorage.setItem('authData', JSON.stringify({
             libraryId: bibliotecaActiva.id,
             authMethod: 'password',
@@ -192,7 +184,11 @@ function Login() {
           activa: true
         };
 
-        localStorage.setItem('bibliotecaActiva', JSON.stringify(mockLibrary));
+
+
+        // localStorage.setItem('bibliotecaActiva', JSON.stringify(mockLibrary)); // updateLibrary ya lo hace
+        updateLibrary(mockLibrary);
+
         localStorage.setItem('authData', JSON.stringify({
           libraryId: 'mock-library-1',
           authMethod: 'password',
