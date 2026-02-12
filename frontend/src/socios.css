@@ -1,8 +1,8 @@
 /* Socios Styles */
 .socios-container {
-  padding: 1.5rem;
+  padding: 1.5rem 1rem 1.5rem 0.25rem;
   width: auto;
-  margin-left: 160px;
+  margin-left: var(--sidebar-width, 260px);
   min-height: 100vh;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -56,10 +56,7 @@ button:hover {
   font-size: 2.5rem;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -73,12 +70,16 @@ button:hover {
   margin-top: 0.35rem;
   white-space: normal;
   word-wrap: break-word;
+  text-align: left;
 }
 
 .add-button {
-  background: #1f2937;
-  color: #c9a368;
-  border: 1px solid #c9a368;
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
+  background: var(--accent-secondary);
+  color: white;
+  border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -87,20 +88,20 @@ button:hover {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
   white-space: nowrap;
   outline: none !important;
-  box-shadow: none !important;
+  box-shadow: var(--shadow);
+  transition: none !important;
 }
 
 .add-button:hover {
-  background: linear-gradient(135deg, #c9a368 0%, #e6c27d 100%);
-  color: #1f2937;
+  background-color: #1a4d8a;
+  box-shadow: var(--shadow);
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
   outline: none !important;
-  border: 1px solid #c9a368 !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
-  -moz-box-shadow: none !important;
+  border: none !important;
 }
 
 .add-button:focus,
@@ -110,10 +111,12 @@ button:hover {
 .add-button:focus-visible:focus,
 .add-button:focus:focus-visible {
   outline: none !important;
-  border: 1px solid #c9a368 !important;
+  border: none !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
   -moz-box-shadow: none !important;
+  transition: none !important;
+  transform: none !important;
 }
 
 /* Regla global para eliminar cualquier outline */
@@ -137,7 +140,6 @@ button:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.3s ease;
   box-shadow: var(--shadow);
 }
 
@@ -235,11 +237,13 @@ button:hover {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group input:hover,
+.form-group textarea:hover {
   outline: none;
-  border-color: #c9a368;
+  border-color: rgba(255, 255, 255, 0.5) !important;
   background: transparent;
-  box-shadow: 0 0 0 3px rgba(201, 163, 104, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
 }
 
 .form-group input::placeholder,
@@ -249,45 +253,58 @@ button:hover {
 
 .form-actions {
   display: flex;
-  gap: 1rem;
+  flex-direction: row;
   justify-content: flex-end;
-  margin-top: 1rem;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.submit-button,
+.cancel-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding: 0 1.25rem !important;
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #c9a368 0%, #e6c27d 100%);
-  color: #1f2937;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.submit-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(201, 163, 104, 0.3);
+  background: var(--accent-secondary) !important;
+  color: white !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .cancel-button {
-  background: #6b7280;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.submit-button:hover {
+  background-color: #1a4d8a !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .cancel-button:hover {
-  background: #4b5563;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Filters Section */
@@ -395,7 +412,7 @@ button:hover {
 .socios-table th {
   background: var(--bg-header);
   padding: 1rem;
-  text-align: left;
+  text-align: left !important;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-header);
@@ -408,6 +425,7 @@ button:hover {
   color: var(--text-secondary);
   font-size: 0.9rem;
   background: inherit;
+  text-align: left !important;
 }
 
 .socios-table tbody tr:nth-child(even) {

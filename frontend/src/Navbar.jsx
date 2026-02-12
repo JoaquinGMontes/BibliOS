@@ -1,178 +1,42 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LogOut, LogIn, Menu, X, Sun, Moon, 
-  LayoutDashboard, Repeat, Users, Book 
-} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LogIn, Sun, Moon } from 'lucide-react';
 import './sidebar.css';
-import { useAuth } from './hooks/useAuth.js';
-import { useLibrary } from './hooks/useLibrary.js';
 import { useTheme } from './hooks/useTheme.js';
-import { useState, useEffect } from 'react';
 
 export default function Navbar() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
-  const { libraries } = useLibrary();
   const { theme, toggleTheme } = useTheme();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    try {
-      const ok = await window.nativeDialog.confirm({
-        message: '¿Seguro que querés cerrar sesión?',
-        detail: 'Se cerrará tu sesión actual.',
-        buttons: ['Cancelar', 'Cerrar sesión'],
-        defaultId: 1,
-        cancelId: 0,
-        okIndex: 1
-      });
-
-      if (ok) {
-        closeMenu();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-        await window.nativeDialog.ensureFocus();
-      }
-    } catch (error) {
-      console.error('Error en confirmación de logout:', error);
-      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-        closeMenu();
-        localStorage.removeItem('bibliotecaActiva');
-        localStorage.removeItem('authData');
-        logout();
-        navigate('/');
-      }
-    }
-  };
 
   const handleLogin = () => {
     navigate('/login');
   };
 
-  const toggleMenu = () => setIsMenuOpen((prev) => !prev);
-  const closeMenu = () => setIsMenuOpen(false);
-
-  // Cerrar menú al cambiar de ruta en móvil
-  useEffect(() => {
-    closeMenu();
-  }, [location.pathname]);
-
-  // Páginas que requieren navbar simple (sin autenticación o Landing)
-  const isSimplePage = location.pathname === '/' ||
-    location.pathname === '/login' ||
-    location.pathname === '/registro';
-
-  const isActive = (path) => location.pathname === path ? 'active' : '';
-
-  if (isSimplePage) {
-    return (
-      <header className="navbar-simple">
+  return (
+    <div className="navbar-simple-wrapper">
+      <header className="navbar-simple glass">
         <Link to="/" className="logo">
           <span className="logo-text">BibliOS</span>
         </Link>
-        
-        {/* Mobile Toggle para Simple Navbar */}
-        <button
-          className="menu-toggle" // Clase definida en welcome.css o global para mobile simple
-          style={{ display: 'none', background: 'transparent', border: 'none', color: 'white' }}
-          onClick={toggleMenu}
-        >
-           {/* Por ahora oculto en desktop, visible en mobile si agregamos media queries especificas */}
-           {/* Para simplicidad en este refactor, mantenemos enlaces directos */}
-        </button>
 
-        <nav>
-          <ul className="nav-links">
-            <li>
-              <button
-                onClick={toggleTheme}
-                className="footer-btn"
-                style={{ width: 'auto', padding: '0.5rem' }}
-                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-              >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={handleLogin}
-                className="footer-btn"
-                style={{ width: 'auto', border: '1px solid currentColor' }}
-              >
-                <LogIn size={18} />
-                Iniciar Sesión
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </header>
-    );
-  }
-
-  // Sidebar completo para aplicación (Dashboard, etc)
-  return (
-    <>
-      {/* Boton Toggle Móvil Externo */}
-      <button 
-        className="mobile-menu-toggle"
-        onClick={toggleMenu}
-        aria-label="Abrir menú"
-      >
-        <Menu size={24} />
-      </button>
-
-      {/* Overlay para cerrar en móvil */}
-      {isMenuOpen && (
-        <div className="sidebar-overlay" onClick={closeMenu} />
-      )}
-
-      <aside className={`sidebar ${isMenuOpen ? 'open' : ''}`}>
-        <Link to="/dashboard" className="logo" onClick={closeMenu}>
-          <span className="logo-text">BibliOS</span>
-        </Link>
-
-        <nav className="sidebar-nav">
-          <Link to="/dashboard" className={`nav-item ${isActive('/dashboard')}`}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </Link>
-          <Link to="/prestamos" className={`nav-item ${isActive('/prestamos')}`}>
-            <Repeat size={20} />
-            Préstamos
-          </Link>
-          <Link to="/socios" className={`nav-item ${isActive('/socios')}`}>
-            <Users size={20} />
-            Socios
-          </Link>
-          <Link to="/libros" className={`nav-item ${isActive('/libros')}`}>
-            <Book size={20} />
-            Libros
-          </Link>
-        </nav>
-
-        <div className="sidebar-footer">
+        <div className="navbar-actions">
           <button
             onClick={toggleTheme}
-            className="footer-btn"
-            title="Cambiar tema"
+            className="navbar-simple-btn theme"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span>{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
           </button>
-          
+
           <button
-            onClick={handleLogout}
-            className="footer-btn logout"
-            title="Cerrar sesión"
+            onClick={handleLogin}
+            className="navbar-simple-btn login"
           >
-            <LogOut size={20} />
-            Cerrar Sesión
+            <LogIn size={18} />
+            <span>Iniciar Sesión</span>
           </button>
         </div>
-      </aside>
-    </>
+      </header>
+    </div>
   );
-} 
+}

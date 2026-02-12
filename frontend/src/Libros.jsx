@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Search, Filter, BookOpen, User, Calendar, 
+import {
+  Plus, Search, Filter, BookOpen, User, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Edit, Trash2,
-  ArrowUpDown, Book, FileText, Circle, Triangle, CheckCircle2, 
-  MapPin, Hash, Tag, Star, Users, Zap
+  ArrowUpDown, Book, FileText, Circle, Triangle, CheckCircle2,
+  MapPin, Hash, Tag, Star, Users, Zap, Menu
 } from 'lucide-react';
 import './libros.css';
-import Navbar from './Navbar.jsx';
+import Sidebar from './Sidebar.jsx';
 import { buscarLibroPorTitulo, buscarLibroPorISBN } from './utils/openLibraryAPI.js';
+import { useData } from './context/DataContext.jsx';
 
 export default function Libros() {
+  // Context Data
+  const {
+    libros: librosRaw,
+    prestamos,
+    library,
+    refreshLibros
+  } = useData();
+
   // Estados principales
   const [libros, setLibros] = useState([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -37,48 +47,32 @@ export default function Libros() {
     descripcion: ''
   });
 
-  // Cargar datos REALES desde la base de datos
+  // Update local formatted state when context data changes
   useEffect(() => {
-    const loadLibros = async () => {
-      try {
-        // Obtener biblioteca activa
-        const storedLibrary = localStorage.getItem('bibliotecaActiva');
-        if (storedLibrary && window.electronAPI) {
-          const library = JSON.parse(storedLibrary);
-          
-          // Cargar libros REALES de la biblioteca
-          const librosReales = await window.electronAPI.getLibros(library.id, {});
-          
-          // Formatear los datos para el componente
-          const librosFormateados = librosReales.map(libro => ({
-            id: libro.id,
-            titulo: libro.titulo,
-            autor: libro.autor,
-            isbn: libro.isbn || '',
-            categoria: libro.categoria || '',
-            editorial: libro.editorial || '',
-            anioPublicacion: libro.anioPublicacion || '',
-            cantidad: libro.cantidad || 1,
-            disponibles: libro.disponibles || 0,
-            prestamosTotales: 0, // TODO: Calcular desde préstamos
-            ubicacion: libro.ubicacion || '',
-            estado: libro.estado || 'disponible',
-            descripcion: libro.descripcion || ''
-          }));
-          
-          setLibros(librosFormateados);
-        } else {
-          // Si no hay biblioteca activa, no mostrar libros
-          setLibros([]);
-        }
-      } catch (error) {
-        console.error('Error al cargar libros:', error);
-        setLibros([]);
-      }
-    };
+    if (librosRaw && prestamos) {
+      const librosFormateados = librosRaw.map(libro => {
+        // Calculate total loans for this book
+        const prestamosLibro = prestamos.filter(p => p.libroId === libro.id);
 
-    loadLibros();
-  }, []);
+        return {
+          id: libro.id,
+          titulo: libro.titulo,
+          autor: libro.autor,
+          isbn: libro.isbn || '',
+          categoria: libro.categoria || '',
+          editorial: libro.editorial || '',
+          anioPublicacion: libro.anioPublicacion || '',
+          cantidad: libro.cantidad || 1,
+          disponibles: libro.disponibles || 0,
+          prestamosTotales: prestamosLibro.length,
+          ubicacion: libro.ubicacion || '',
+          estado: libro.estado || 'disponible',
+          descripcion: libro.descripcion || ''
+        };
+      });
+      setLibros(librosFormateados);
+    }
+  }, [librosRaw, prestamos]);
 
   // Funciones auxiliares
   const getEstadoColor = (estado) => {
@@ -139,7 +133,7 @@ export default function Libros() {
           anioPublicacion: libroEncontrado.anioPublicacion || prev.anioPublicacion,
           descripcion: libroEncontrado.descripcion || prev.descripcion
         }));
-        
+
         await window.nativeDialog.message({
           message: '¡Libro encontrado!',
           detail: 'Los datos se han llenado automáticamente. Revisa y ajusta si es necesario.'
@@ -163,7 +157,7 @@ export default function Libros() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       // Obtener biblioteca activa
       const storedLibrary = localStorage.getItem('bibliotecaActiva');
@@ -174,9 +168,9 @@ export default function Libros() {
         });
         return;
       }
-      
+
       const library = JSON.parse(storedLibrary);
-      
+
       // Crear libro en la base de datos
       if (window.electronAPI) {
         const newLibro = await window.electronAPI.createLibro({
@@ -191,12 +185,9 @@ export default function Libros() {
           descripcion: formData.descripcion || null,
           bibliotecaId: library.id
         });
-        
-        // Agregar a la lista local
-        setLibros([...libros, {
-          ...newLibro,
-          prestamosTotales: 0
-        }]);
+
+        // Actualizar contexto global
+        refreshLibros();
       } else {
         // Fallback local
         const newLibro = {
@@ -208,9 +199,10 @@ export default function Libros() {
           estado: 'disponible',
           anioPublicacion: formData.anioPublicacion || new Date().getFullYear().toString()
         };
-        setLibros([...libros, newLibro]);
+        // Local fallback (optional)
+        console.warn("No electronAPI, manual update");
       }
-      
+
       // Limpiar formulario
       setFormData({
         titulo: '',
@@ -245,9 +237,9 @@ export default function Libros() {
         if (window.electronAPI) {
           await window.electronAPI.deleteLibro(libroToDelete);
         }
-        
+
         // Eliminar de la lista local
-        setLibros(libros.filter(libro => libro.id !== libroToDelete));
+        refreshLibros();
         setLibroToDelete(null);
       } catch (error) {
         console.error('Error al eliminar libro:', error);
@@ -298,7 +290,7 @@ export default function Libros() {
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       if (window.electronAPI && libroToEdit) {
         await window.electronAPI.updateLibro(libroToEdit.id, {
@@ -312,15 +304,11 @@ export default function Libros() {
           ubicacion: editFormData.ubicacion || null,
           descripcion: editFormData.descripcion || null
         });
-        
+
         // Actualizar lista local
-        setLibros(libros.map(libro => 
-          libro.id === libroToEdit.id 
-            ? { ...libro, ...editFormData, cantidad: parseInt(editFormData.cantidad) }
-            : libro
-        ));
+        refreshLibros();
       }
-      
+
       setShowEditModal(false);
       setLibroToEdit(null);
       setEditFormData({});
@@ -335,13 +323,13 @@ export default function Libros() {
 
   // Filtrado y búsqueda
   const filteredLibros = libros.filter(libro => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       libro.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       libro.autor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       libro.isbn.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterStatus === 'todos' || libro.estado === filterStatus;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -355,7 +343,15 @@ export default function Libros() {
 
   return (
     <>
-      <Navbar />
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(true)}
+        aria-label="Abrir menú"
+      >
+        <Menu size={24} />
+      </button>
+
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="libros-container">
         {/* Header */}
         <div className="libros-header">
@@ -364,7 +360,7 @@ export default function Libros() {
             <span className="header-separator">|</span>
             <p>Administrá el catálogo de libros, ejemplares y disponibilidad</p>
           </div>
-          <button 
+          <button
             className="add-button"
             onClick={() => setShowForm(!showForm)}
           >
@@ -466,10 +462,10 @@ export default function Libros() {
                   />
                 </div>
               </div>
-              
+
               {/* Botón de búsqueda automática */}
               <div className="auto-search-section">
-                <button 
+                <button
                   type="button"
                   className="auto-search-button"
                   onClick={handleAutoSearch}
@@ -534,25 +530,25 @@ export default function Libros() {
                 </div>
               </div>
               <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="descripcion">Descripción</label>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label htmlFor="descripcion">Observaciones</label>
                   <textarea
                     id="descripcion"
                     name="descripcion"
                     value={formData.descripcion}
                     onChange={handleInputChange}
                     onClick={handleInputClick}
-                    rows="3"
+                    rows="6"
                   />
                 </div>
               </div>
-              <div className="form-actions">
+              <div className="libros-form-actions">
                 <button type="submit" className="submit-button">
                   <Plus size={16} />
                   Registrar Libro
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="cancel-button"
                   onClick={() => setShowForm(false)}
                 >
@@ -576,8 +572,8 @@ export default function Libros() {
           </div>
           <div className="filter-box">
             <Filter size={16} />
-            <select 
-              value={filterStatus} 
+            <select
+              value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="todos">Todos los estados</option>
@@ -659,7 +655,7 @@ export default function Libros() {
                         </div>
                       </td>
                       <td>
-                        <span 
+                        <span
                           className="status-badge"
                           style={{ backgroundColor: getEstadoColor(libro.estado) }}
                         >
@@ -677,7 +673,7 @@ export default function Libros() {
                       </td>
                       <td>
                         <div className="actions">
-                          <button 
+                          <button
                             className="action-btn view"
                             onClick={() => {
                               setSelectedLibro(libro);
@@ -687,14 +683,14 @@ export default function Libros() {
                           >
                             <Eye size={14} />
                           </button>
-                          <button 
+                          <button
                             className="action-btn edit"
                             onClick={() => handleEditClick(libro)}
                             title="Editar libro"
                           >
                             <Edit size={14} />
                           </button>
-                          <button 
+                          <button
                             className="action-btn delete"
                             onClick={() => handleEliminar(libro.id)}
                             title="Eliminar libro"
@@ -717,7 +713,7 @@ export default function Libros() {
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Detalles del Libro #{selectedLibro.id}</h3>
-                <button 
+                <button
                   className="close-button"
                   onClick={() => setShowDetails(false)}
                 >
@@ -767,7 +763,7 @@ export default function Libros() {
                 </div>
                 <div className="detail-row">
                   <span className="label">Estado:</span>
-                  <span 
+                  <span
                     className="value status-badge"
                     style={{ backgroundColor: getEstadoColor(selectedLibro.estado) }}
                   >
@@ -795,7 +791,7 @@ export default function Libros() {
             <div className="modal-content confirm-modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Confirmar Eliminación</h3>
-                <button 
+                <button
                   className="close-button"
                   onClick={cancelDelete}
                 >
@@ -809,13 +805,13 @@ export default function Libros() {
                   <p className="confirm-warning">Esta acción no se puede deshacer.</p>
                 </div>
                 <div className="confirm-actions">
-                  <button 
+                  <button
                     className="confirm-btn cancel"
                     onClick={cancelDelete}
                   >
                     Cancelar
                   </button>
-                  <button 
+                  <button
                     className="confirm-btn delete"
                     onClick={confirmDelete}
                   >
@@ -833,7 +829,7 @@ export default function Libros() {
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Editar Libro #{libroToEdit.id}</h3>
-                <button 
+                <button
                   className="close-button"
                   onClick={() => setShowEditModal(false)}
                 >
@@ -952,14 +948,14 @@ export default function Libros() {
                     </div>
                   </div>
                   <div className="form-actions">
-                    <button 
+                    <button
                       type="button"
                       className="cancel-btn"
                       onClick={() => setShowEditModal(false)}
                     >
                       Cancelar
                     </button>
-                    <button 
+                    <button
                       type="submit"
                       className="submit-btn"
                     >

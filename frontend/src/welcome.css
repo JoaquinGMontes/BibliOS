@@ -59,11 +59,10 @@ header {
     align-items: center;
     justify-content: space-between;
     z-index: 1000;
-    padding: 0 2rem;
-    background: rgba(18, 18, 18, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 0 4rem;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 .logo {
@@ -90,11 +89,12 @@ header {
 
 .logo-text {
     font-size: 1.8rem;
-    font-weight: 600;
-    color: #ffffff;
-    text-decoration: none;
-    cursor: pointer;
-    letter-spacing: 0.5px;
+    font-weight: 800;
+    background: var(--logo-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
 }
 
 
@@ -173,8 +173,8 @@ header {
 
 .theme-toggle-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    border-color: #c9a368;
-    color: #c9a368;
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
 }
 
 .logout-btn {
@@ -200,8 +200,8 @@ header {
 }
 
 .login-btn {
-    background-color: #c9a368;
-    color: #111;
+    background-color: var(--accent-primary);
+    color: white;
     border: none;
     padding: 8px 16px;
     border-radius: 8px;
@@ -216,8 +216,8 @@ header {
 }
 
 .login-btn:hover {
-    background-color: #b58b4a;
-    color: #111;
+    background-color: var(--accent-secondary);
+    color: white;
     text-decoration: none;
 }
 
@@ -246,6 +246,7 @@ body {
     justify-content: center;
     position: relative;
     width: 100%;
+    background: var(--bg-primary);
 }
 
 .hero-text {
@@ -253,29 +254,32 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    color: white;
+    color: var(--text-primary);
     font-weight: 900;
     height: 100%;
 }
 
 .hero-text .tagline {
     font-size: clamp(0.9rem, 1.2vw, 1.1rem);
-    color: #d4a24e;
-    margin-bottom: 1rem;
+    color: var(--accent-primary);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    letter-spacing: 1px;
 }
 
 .hero-text .hero-title {
     font-size: clamp(2.5rem, 5vw, 4.5rem);
-    font-weight: bold;
+    font-weight: 800;
     margin: 0;
     color: var(--text-primary);
+    letter-spacing: -2px;
 }
 
 .hero-text .hero-description {
     font-size: clamp(1rem, 1.5vw, 1.3rem);
-    margin: 1.5rem 0;
-    color: var(--text-secondary);
-    line-height: 1.6;
+    margin: 0.75rem 0;
+    color: #8DA9C4;
+    line-height: 1.4;
 }
 
 .hero-text .hero-title,
@@ -288,28 +292,31 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
 }
 
 .primary-btn {
     padding: 0.75rem 1.5rem;
-    background-color: #c9a368;
+    background-color: #134074;
+    /* Force Navy */
     border: none;
-    border-radius: 8px;
+    border-radius: 100px;
+    /* Pill shape like Iniciar Sesión */
     font-weight: bold;
     cursor: pointer;
-    color: #111;
-    transition: background 0.3s ease;
+    color: #EEF4ED !important;
+    transition: all 0.3s ease;
     text-decoration: none;
 }
 
 .primary-btn:hover {
-    background-color: #b58b4a;
+    background-color: #1a4d8a;
+    /* Subtle shift */
 }
 
 .mock-btn {
-    background-color: #c9a368;
-    color: #111;
+    background-color: var(--accent-primary);
+    color: white;
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
@@ -323,8 +330,8 @@ body {
 }
 
 .mock-btn:hover {
-    background-color: #b58b4a;
-    color: #111;
+    background-color: var(--accent-secondary);
+    color: white;
     text-decoration: none;
 }
 
@@ -333,7 +340,7 @@ body {
 .primary-btn:active,
 .primary-btn:hover,
 .primary-btn:focus {
-    color: #111 !important;
+    color: white !important;
     text-decoration: none;
 }
 

@@ -1,8 +1,24 @@
 /* Sidebar y Navbar Styles */
 
-/* Base vars si no están definidas (fallback), aunque deberían venir de index.css */
 :root {
-    --sidebar-width: 200px;
+    --sidebar-width: 260px;
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(255, 255, 255, 0.08);
+    --accent-glow: rgba(99, 102, 241, 0.15);
+    /* Indigo glow */
+    --accent-premium: #6366f1;
+    /* Minimalist Indigo */
+}
+
+/* Glassmorphism Utility */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    /* Increased blur */
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 /* === SIDEBAR (App principal) === */
@@ -12,36 +28,73 @@
     left: 0;
     bottom: 0;
     width: var(--sidebar-width);
-    background: rgba(18, 18, 18, 0.95);
-    /* semi-transparente */
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0a0a0a;
+    border-right: 1px solid #1a1a1a;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1rem;
     z-index: 1000;
-    backdrop-filter: blur(12px);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
 }
 
-.sidebar.closed {
-    transform: translateX(-100%);
+/* Light mode sidebar */
+body[data-theme="light"] .sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e5e7eb;
+}
+
+body[data-theme="light"] .nav-item {
+    color: #6b7280;
+}
+
+body[data-theme="light"] .nav-item:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+body[data-theme="light"] .nav-item.active {
+    background: #f0f4f8;
+    color: var(--accent-premium);
+    border-color: #e0e7ef;
+}
+
+body[data-theme="light"] .footer-btn {
+    color: #6b7280;
+}
+
+body[data-theme="light"] .footer-btn:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+body[data-theme="light"] .footer-btn.logout:hover {
+    background: rgba(239, 68, 68, 0.06);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.15);
+}
+
+body[data-theme="light"] .sidebar-footer {
+    border-top-color: #e5e7eb;
 }
 
 /* Logo Area */
-.sidebar .logo {
-    margin-bottom: 3rem;
+.sidebar-logo {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     text-decoration: none;
     padding: 0 0.5rem;
+    margin-bottom: 2rem;
+    /* Good spacing from top */
 }
 
-.sidebar .logo-text {
-    font-size: 1.8rem;
+.sidebar-logo .logo-text {
+    font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #c9a368 0%, #e6c27d 100%);
+    margin-left: 0.25rem;
+    background: var(--logo-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -60,10 +113,9 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.875rem 1rem;
+    padding: 0.75rem 1rem;
     border-radius: 12px;
     color: #9ca3af;
-    /* text-secondary */
     text-decoration: none;
     transition: all 0.2s ease;
     font-weight: 500;
@@ -72,15 +124,15 @@
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     color: white;
+    transform: none;
 }
 
 .nav-item.active {
-    background: rgba(201, 163, 104, 0.1);
-    color: #c9a368;
-    /* accent-primary */
-    border-color: rgba(201, 163, 104, 0.15);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-item svg {
@@ -93,7 +145,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--glass-border);
     padding-top: 1.5rem;
 }
 
@@ -101,13 +153,13 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.875rem 1rem;
-    border-radius: 12px;
+    padding: 0.875rem 1.25rem;
+    border-radius: 16px;
     color: #9ca3af;
-    background: transparent;
-    border: none;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     font-weight: 500;
     font-size: 0.95rem;
     width: 100%;
@@ -115,98 +167,157 @@
 }
 
 .footer-btn:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--glass-hover);
     color: white;
 }
 
 .footer-btn.logout:hover {
     background: rgba(239, 68, 68, 0.1);
-    /* red tint */
     color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.2);
 }
 
-/* === NAVBAR SIMPLE (Landing / Login) === */
-.navbar-simple {
-    position: absolute;
+.footer-btn.theme-toggle-btn:hover {
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* === NAVBAR SIMPLE (Floating Landing Design) === */
+.navbar-simple-wrapper {
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
+    z-index: 1000;
+}
+
+.navbar-simple {
+    width: 100%;
+    height: 70px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 2rem;
-    z-index: 100;
-    background: transparent;
+    padding: 0 4rem;
+    background: var(--bg-primary);
+    /* Theme-aware background */
+    border-bottom: none;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+@keyframes navbar-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .navbar-simple .logo-text {
     font-size: 1.8rem;
-    font-weight: 700;
-    color: white;
-    /* O usar gradiente si prefiere */
+    font-weight: 800;
+    background: var(--logo-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
 }
 
-.navbar-simple .nav-links {
+.navbar-actions {
     display: flex;
     align-items: center;
-    gap: 2rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+    gap: 1.25rem;
 }
 
-.navbar-simple a {
-    color: #e5e7eb;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
+.navbar-simple-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
 }
 
-.navbar-simple a:hover {
-    color: #c9a368;
+.navbar-simple-btn.login {
+    background: #134074;
+    /* Solid Navy */
+    color: #EEF4ED !important;
+    border: 1px solid rgba(141, 169, 196, 0.2);
+    box-shadow: none;
 }
 
-/* Mobile Toggle Button (fuera del sidebar) */
+
+.navbar-simple-btn.theme {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--text-primary);
+    box-shadow: none;
+}
+
+
+/* Mobile Toggle Button — hidden on desktop */
 .mobile-menu-toggle {
     display: none;
-    /* Hidden on desktop */
     position: fixed;
     top: 1rem;
     left: 1rem;
     z-index: 1100;
-    background: #1f2937;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(10, 10, 10, 0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(141, 169, 196, 0.15);
     color: white;
-    padding: 0.5rem;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    align-items: center;
+    justify-content: center;
 }
 
-/* Responsive */
+/* Responsive — sidebar becomes overlay on small screens */
 @media (max-width: 1024px) {
     .sidebar {
-        transform: translateX(-100%);
+        left: calc(-1 * var(--sidebar-width));
     }
 
     .sidebar.open {
-        transform: translateX(0);
+        left: 0;
     }
 
     .mobile-menu-toggle {
         display: flex;
-        align-items: center;
-        justify-content: center;
     }
 
-    /* Overlay para cerrar sidebar en móvil */
     .sidebar-overlay {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
         z-index: 999;
         backdrop-filter: blur(4px);
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-simple {
+        padding: 0 1.25rem;
+    }
+
+    .navbar-simple-btn span {
+        display: none;
+        /* Hide text on very small screens */
+    }
+
+    .navbar-simple-btn {
+        padding: 0.6rem;
     }
 }

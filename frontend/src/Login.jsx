@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Library, LogIn, X, AlertCircle, Lock, Eye, EyeOff, Sparkles, Activity } from 'lucide-react';
+import { Library, LogIn, X, AlertCircle, Lock, Eye, EyeOff, Sparkles, Activity, CheckCircle } from 'lucide-react';
 import './Login.css';
 import Navbar from './Navbar.jsx';
 
@@ -11,36 +11,8 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [currentText, setCurrentText] = useState(0);
-  const [isChanging, setIsChanging] = useState(false);
   const [isCreatingDemo, setIsCreatingDemo] = useState(false);
-
-  const inspirationTexts = [
-    "Trabajamos para nosotros",
-    "El conocimiento es poder",
-    "Los libros cambian vidas",
-    "El aprendizaje nunca termina",
-    "La educación es libertad",
-    "Lee, aprende, crece",
-    "El conocimiento compartido se multiplica",
-    "Cada libro es un viaje",
-    "Las bibliotecas son el futuro",
-    "La lectura abre mentes"
-  ];
-
-  // Efecto para cambiar el texto cada 3 segundos con transición
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsChanging(true);
-
-      setTimeout(() => {
-        setCurrentText((prev) => (prev + 1) % inspirationTexts.length);
-        setIsChanging(false);
-      }, 300); // Mitad de la duración de la transición
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [inspirationTexts.length]);
+  const [successModal, setSuccessModal] = useState(null);
 
   // Limpiar formulario al cargar la página
   useEffect(() => {
@@ -184,25 +156,24 @@ function Login() {
             createdAt: new Date().toISOString()
           }));
 
-          // Mostrar mensaje de éxito
+          // Mostrar modal de éxito
           if (result && result.exists) {
-            // Biblioteca ya existía - simplemente iniciar sesión
-            await window.nativeDialog.message({
-              message: '✅ Sesión iniciada con la biblioteca UTN-FRLP existente.',
+            setSuccessModal({
+              title: 'Sesión iniciada',
+              message: 'Biblioteca UTN-FRLP cargada correctamente.',
               detail: result.datos && result.datos.librosInsertados
-                ? `📚 ${result.datos.librosInsertados} libros\n👥 ${result.datos.sociosInsertados} socios\n📋 ${result.datos.prestamosInsertados} préstamos`
-                : 'La biblioteca ya estaba creada con todos sus datos.'
+                ? `${result.datos.librosInsertados} libros · ${result.datos.sociosInsertados} socios · ${result.datos.prestamosInsertados} préstamos`
+                : null
             });
           } else if (result && result.datos) {
-            // Biblioteca recién creada
-            await window.nativeDialog.message({
-              message: '✅ ¡Biblioteca UTN-FRLP creada e iniciada!',
-              detail: `📚 ${result.datos.librosInsertados} libros insertados\n👥 ${result.datos.sociosInsertados} socios insertados\n📋 ${result.datos.prestamosInsertados} préstamos creados`
+            setSuccessModal({
+              title: 'Biblioteca creada',
+              message: '¡Biblioteca UTN-FRLP creada exitosamente!',
+              detail: `${result.datos.librosInsertados} libros · ${result.datos.sociosInsertados} socios · ${result.datos.prestamosInsertados} préstamos`
             });
+          } else {
+            navigate('/dashboard');
           }
-
-          // Redirigir al dashboard
-          navigate('/dashboard');
         } else {
           setError('Error al obtener la biblioteca activa');
         }
@@ -245,144 +216,117 @@ function Login() {
     <div className="full-width-page">
       <Navbar />
       <div className="login-container">
-        <div className="login-wrapper">
-          <button
-            className="close-login-button"
-            onClick={() => navigate('/')}
-          >
-            <X size={24} />
-          </button>
-          <div className="login-form-section">
-            <div className="login-content">
-              <div className="login-header">
-                <div className="header-content">
-                  <h1>Iniciar Sesión</h1>
-                  <span className="header-separator">|</span>
-                  <p>Ingresa el nombre de la biblioteca y tu contraseña</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="login-form">
-                <div className="form-group">
-                  <label htmlFor="libraryName" className="form-label">
-                    <Library size={16} />
-                    Nombre de la Biblioteca
-                  </label>
-                  <input
-                    id="libraryName"
-                    type="text"
-                    value={libraryName}
-                    onChange={(e) => setLibraryName(e.target.value)}
-                    onClick={handleInputClick}
-                    placeholder="Ej: UTN-FRLP"
-                    className="form-input"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="password" className="form-label">
-                    <Lock size={16} />
-                    Contraseña
-                  </label>
-                  <div className="password-input-wrapper">
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onClick={handleInputClick}
-                      placeholder="Ingresa tu contraseña"
-                      className="form-input"
-                      required
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="login-error">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="login-submit-btn"
-                  disabled={isLoading || !libraryName.trim() || !password.trim()}
-                >
-                  <LogIn size={16} />
-                  {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-                </button>
-              </form>
-
-              <div className="login-footer">
-                <p>¿No tienes una biblioteca registrada?</p>
-                <button
-                  className="register-link-btn"
-                  onClick={() => navigate('/registro')}
-                >
-                  <Library size={16} />
-                  Registrar Nueva Biblioteca
-                </button>
-              </div>
-
-              {/* Botón de acceso rápido UTN-FRLP */}
-              {window.electronAPI && (
-                <div className="utn-quick-access">
-                  <div className="utn-divider">
-                    <span>Acceso Rápido</span>
-                  </div>
-                  <button
-                    onClick={handleCreateAndLoginUTN}
-                    disabled={isCreatingDemo || isLoading}
-                    className="utn-quick-btn"
-                  >
-                    {isCreatingDemo ? (
-                      <>
-                        <Activity className="animate-spin" size={18} />
-                        Creando biblioteca...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={18} />
-                        Crear e Iniciar con UTN-FRLP
-                      </>
-                    )}
-                  </button>
-                  <p className="utn-description">
-                    Crea automáticamente una biblioteca de demostración completa con datos de prueba y accede inmediatamente.
-                  </p>
-                </div>
+        {/* Success Modal */}
+        {successModal && (
+          <div className="success-modal-overlay" onClick={() => { setSuccessModal(null); navigate('/dashboard'); }}>
+            <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+              <CheckCircle size={32} className="success-modal-icon" />
+              <h3>{successModal.title}</h3>
+              <p>{successModal.message}</p>
+              {successModal.detail && (
+                <span className="success-modal-detail">{successModal.detail}</span>
               )}
-
-              <div className="login-help">
-                <h4>🔑 Credenciales de Prueba</h4>
-                <p><strong>Biblioteca:</strong> UTN-FRLP</p>
-                <p><strong>Contraseña:</strong> UTN</p>
-              </div>
+              <button
+                className="success-modal-btn"
+                onClick={() => { setSuccessModal(null); navigate('/dashboard'); }}
+              >
+                Continuar
+              </button>
             </div>
           </div>
+        )}
 
-          <div className="login-inspiration-section">
-            <div className="inspiration-content">
-              <h1 className={`inspiration-text ${isChanging ? 'changing' : ''}`}>
-                {inspirationTexts[currentText]}
-              </h1>
-              <p className={`inspiration-subtitle ${isChanging ? 'changing' : ''}`}>
-                Transformando la gestión bibliotecaria
-              </p>
+        <div className="login-content">
+          <button className="close-login-button" onClick={() => navigate('/')}>
+            <X size={18} />
+          </button>
+          <div className="login-header">
+            <h1>Iniciar Sesión</h1>
+            <p>Ingresa tus credenciales para acceder</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="form-group">
+              <label htmlFor="libraryName" className="form-label">
+                Biblioteca
+              </label>
+              <input
+                id="libraryName"
+                type="text"
+                value={libraryName}
+                onChange={(e) => setLibraryName(e.target.value)}
+                onClick={handleInputClick}
+                placeholder="Ej: UTN-FRLP"
+                className="form-input"
+                required
+                disabled={isLoading}
+              />
             </div>
+
+            <div className="form-group">
+              <label htmlFor="password" className="form-label">
+                Contraseña
+              </label>
+              <div className="password-input-wrapper">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onClick={handleInputClick}
+                  placeholder="Contraseña"
+                  className="form-input"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="login-error">
+                <AlertCircle size={14} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={isLoading || !libraryName.trim() || !password.trim()}
+            >
+              <LogIn size={15} />
+              {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+            </button>
+          </form>
+
+          <div className="login-actions">
+            <button className="register-btn" onClick={() => navigate('/registro')}>
+              Registrar biblioteca
+            </button>
+            {window.electronAPI && (
+              <button
+                onClick={handleCreateAndLoginUTN}
+                disabled={isCreatingDemo || isLoading}
+                className="demo-link"
+              >
+                {isCreatingDemo ? (
+                  <>
+                    <Activity className="animate-spin" size={13} />
+                    Creando...
+                  </>
+                ) : (
+                  'Probar con demo UTN-FRLP'
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -391,3 +335,4 @@ function Login() {
 }
 
 export default Login;
+

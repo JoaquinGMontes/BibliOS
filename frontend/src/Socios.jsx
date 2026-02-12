@@ -2,14 +2,24 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, Filter, User, Mail, Phone, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Edit, Trash2,
-  ArrowUpDown, Users, FileText, Circle, Triangle, CheckCircle2, MapPin
+  ArrowUpDown, Users, FileText, Circle, Triangle, CheckCircle2, MapPin, Menu
 } from 'lucide-react';
 import './socios.css';
-import Navbar from './Navbar.jsx';
+import Sidebar from './Sidebar.jsx';
+import { useData } from './context/DataContext.jsx';
 
 export default function Socios() {
+  // Context Data
+  const {
+    socios: sociosRaw,
+    prestamos,
+    library,
+    refreshSocios
+  } = useData();
+
   // Estados principales
   const [socios, setSocios] = useState([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -31,113 +41,8 @@ export default function Socios() {
     observaciones: ''
   });
 
-  // Cargar datos REALES desde la base de datos
-  useEffect(() => {
-    const loadSocios = async () => {
-      try {
-        // Obtener biblioteca activa
-        const storedLibrary = localStorage.getItem('bibliotecaActiva');
-        if (storedLibrary && window.electronAPI) {
-          const library = JSON.parse(storedLibrary);
 
-          // Cargar socios REALES de la biblioteca
-          const sociosReales = await window.electronAPI.getSocios(library.id, {});
 
-          // Cargar TODOS los préstamos de la biblioteca
-          const prestamos = await window.electronAPI.getPrestamos(library.id, {});
-
-          // Formatear los datos para el componente
-          const sociosFormateados = sociosReales.map(socio => {
-            // Calcular préstamos activos y totales para este socio
-            const prestamosSocio = prestamos.filter(p => p.socioId === socio.id);
-            const prestamosActivos = prestamosSocio.filter(p => p.estado === 'activo').length;
-            const prestamosTotales = prestamosSocio.length;
-
-            return {
-              id: socio.id,
-              nombre: socio.nombre,
-              email: socio.email || '',
-              telefono: socio.telefono || '',
-              direccion: socio.direccion || '',
-              fechaRegistro: socio.fechaRegistro || new Date().toISOString().split('T')[0],
-              estado: socio.estado || 'activo',
-              prestamosActivos: prestamosActivos,
-              prestamosTotales: prestamosTotales,
-              observaciones: socio.observaciones || ''
-            };
-          });
-
-          setSocios(sociosFormateados);
-        } else {
-          // Si no hay biblioteca activa, no mostrar socios
-          setSocios([]);
-        }
-      } catch (error) {
-        console.error('Error al cargar socios:', error);
-        setSocios([]);
-      }
-    };
-
-    loadSocios();
-  }, []);
-
-  // Recargar socios cuando vuelves a la página (actualizar contadores de préstamos)
-  useEffect(() => {
-    const loadSociosData = async () => {
-      try {
-        const storedLibrary = localStorage.getItem('bibliotecaActiva');
-        if (storedLibrary && window.electronAPI) {
-          const library = JSON.parse(storedLibrary);
-          const sociosReales = await window.electronAPI.getSocios(library.id, {});
-          const prestamos = await window.electronAPI.getPrestamos(library.id, {});
-
-          const sociosFormateados = sociosReales.map(socio => {
-            const prestamosSocio = prestamos.filter(p => p.socioId === socio.id);
-            const prestamosActivos = prestamosSocio.filter(p => p.estado === 'activo').length;
-            const prestamosTotales = prestamosSocio.length;
-
-            return {
-              id: socio.id,
-              nombre: socio.nombre,
-              email: socio.email || '',
-              telefono: socio.telefono || '',
-              direccion: socio.direccion || '',
-              fechaRegistro: socio.fechaRegistro || new Date().toISOString().split('T')[0],
-              estado: socio.estado || 'activo',
-              prestamosActivos: prestamosActivos,
-              prestamosTotales: prestamosTotales,
-              observaciones: socio.observaciones || ''
-            };
-          });
-
-          setSocios(sociosFormateados);
-        }
-      } catch (error) {
-        console.error('Error al recargar socios:', error);
-      }
-    };
-
-    // Recargar cuando la página se vuelve visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadSociosData();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Recargar cada 5 segundos cuando la página está activa
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        loadSociosData();
-      }
-    }, 5000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(interval);
-    };
-  }, []);
 
   // Funciones auxiliares
   const getEstadoColor = (estado) => {
@@ -197,28 +102,11 @@ export default function Socios() {
           bibliotecaId: library.id
         };
 
-        console.log('Datos del socio a crear:', socioData);
-
-        const newSocio = await window.electronAPI.createSocio(socioData);
-
-        // Agregar a la lista local
-        setSocios([...socios, {
-          ...newSocio,
-          prestamosActivos: 0,
-          prestamosTotales: 0
-        }]);
-      } else {
-        // Fallback local
-        const newSocio = {
-          id: Date.now(),
-          ...formData,
-          estado: 'activo',
-          prestamosActivos: 0,
-          prestamosTotales: 0,
-          fechaRegistro: new Date().toISOString().split('T')[0]
-        };
-        setSocios([...socios, newSocio]);
+        await window.electronAPI.createSocio(socioData);
+        refreshSocios(); // Refresh global state
       }
+
+      // Limpiar formulario
 
       // Limpiar formulario
       setFormData({
@@ -253,7 +141,7 @@ export default function Socios() {
         }
 
         // Eliminar de la lista local
-        setSocios(socios.filter(socio => socio.id !== socioToDelete));
+        refreshSocios(); // Refresh global state
         setSocioToDelete(null);
       } catch (error) {
         console.error('Error al eliminar socio:', error);
@@ -312,11 +200,7 @@ export default function Socios() {
         });
 
         // Actualizar lista local
-        setSocios(socios.map(socio =>
-          socio.id === socioToEdit.id
-            ? { ...socio, ...editFormData }
-            : socio
-        ));
+        refreshSocios(); // Refresh global state
       }
 
       setShowEditModal(false);
@@ -357,7 +241,15 @@ export default function Socios() {
 
   return (
     <>
-      <Navbar />
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(true)}
+        aria-label="Abrir menú"
+      >
+        <Menu size={24} />
+      </button>
+
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="socios-container">
         {/* Header */}
         <div className="socios-header">
@@ -469,7 +361,7 @@ export default function Socios() {
                 </div>
               </div>
               <div className="form-row">
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor="observaciones">Observaciones</label>
                   <textarea
                     id="observaciones"
@@ -477,7 +369,7 @@ export default function Socios() {
                     value={formData.observaciones}
                     onChange={handleInputChange}
                     onClick={handleInputClick}
-                    rows="3"
+                    rows="6"
                   />
                 </div>
               </div>
