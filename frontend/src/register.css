@@ -25,7 +25,7 @@
 
 .register-container {
   min-height: 100vh;
-  background: #121212;
+  background: var(--bg-primary);
   padding: 0;
   display: flex;
   align-items: flex-start;
@@ -133,7 +133,7 @@
 
 .register-header p {
   font-size: clamp(1rem, 2vw, 1.2rem);
-  color: #d1d5db;
+  color: var(--text-secondary);
   margin: 0;
   max-width: 600px;
   display: inline-block !important;
@@ -151,12 +151,12 @@
 
 /* Form Section */
 .register-form-section {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-  border: 1px solid rgba(19, 64, 116, 0.3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 2.5rem 2.5rem 3.5rem 2.5rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow);
   width: 100%;
   height: fit-content;
   margin-bottom: 2rem;
@@ -215,7 +215,7 @@
 .form-group label {
   font-size: 1rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -231,10 +231,10 @@
 .form-group input,
 .form-group textarea {
   padding: 1rem 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--input-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #ffffff !important;
+  background: var(--input-bg);
+  color: var(--input-text) !important;
   font-size: 1.1rem;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
@@ -246,23 +246,23 @@
 
 .form-group input:hover,
 .form-group textarea:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(19, 64, 116, 0.5);
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
   border-color: var(--accent-primary);
-  background: rgba(19, 64, 116, 0.08);
+  background: var(--input-bg);
   box-shadow: 0 0 0 3px rgba(19, 64, 116, 0.2);
-  color: #ffffff !important;
+  color: var(--input-text) !important;
   opacity: 1;
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--input-placeholder);
   font-weight: 400;
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
@@ -357,12 +357,12 @@
 
 /* Existing Libraries Section */
 .existing-libraries-section {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 2.5rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow);
   width: 100%;
   height: fit-content;
 }
@@ -371,7 +371,7 @@
   font-size: 2rem;
   font-weight: 600;
   margin: 0 0 2rem 0;
-  color: white;
+  color: var(--text-primary);
 }
 
 .libraries-list {
@@ -381,8 +381,8 @@
 }
 
 .library-card {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   transition: all 0.3s ease;
@@ -405,7 +405,7 @@
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: white;
+  color: var(--text-primary);
 }
 
 .library-address,
