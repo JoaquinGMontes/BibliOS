@@ -16,8 +16,8 @@ function focusRepair(win) {
  * Registra todos los handlers IPC para diálogos nativos con reparación de foco
  */
 function registerDialogsIPC() {
-  // Diálogo de confirmación
-  ipcMain.handle('dialog:confirm', async (event, opts) => {
+  // Diálogo de confirmación (estilo sistema: type, title, message, detail, buttons, defaultId, cancelId, okIndex)
+  ipcMain.handle('dialog:confirm', async (event, opts = {}) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const res = await dialog.showMessageBox(win, {
       type: 'question',
@@ -29,7 +29,9 @@ function registerDialogsIPC() {
       ...opts
     });
     focusRepair(win);
-    return res.response === (opts?.okIndex ?? 1); // true si Aceptar
+    // true si el usuario pulsó el botón "confirmar" (índice okIndex)
+    const okIndex = opts.okIndex !== undefined ? opts.okIndex : 1;
+    return res.response === okIndex;
   });
 
   // Diálogo de mensaje/información

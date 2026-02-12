@@ -51,12 +51,15 @@ export default function Dashboard() {
     try {
       // Usar el wrapper de diálogo nativo con reparación automática de foco
       const ok = await window.nativeDialog.confirm({
+        type: 'info',
+        title: 'biblios',
         message: '¿Seguro que querés cerrar sesión?',
         detail: 'Se cerrará tu sesión actual.',
-        buttons: ['Cancelar', 'Cerrar sesión'],
-        defaultId: 1,
-        cancelId: 0,
-        okIndex: 1
+        buttons: ['Cerrar sesión', 'Cancelar'],
+        defaultId: 0,
+        cancelId: 1,
+        okIndex: 0,
+        noLink: true
       });
 
       if (ok) {

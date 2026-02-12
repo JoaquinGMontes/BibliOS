@@ -60,8 +60,10 @@ export default function Prestamos() {
 
   useEffect(() => {
     if (sociosRaw) {
-      const sociosFormateados = sociosRaw.map(socio => ({
+      const sorted = [...sociosRaw].sort((a, b) => a.id - b.id);
+      const sociosFormateados = sorted.map((socio, index) => ({
         id: socio.id,
+        numeroEnBiblioteca: index + 1,
         nombre: socio.nombre,
         email: socio.email || '',
         telefono: socio.telefono || '',
@@ -165,7 +167,7 @@ export default function Prestamos() {
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(`${socio.nombre} - ${socio.id}`);
+    setSocioSearch(`${socio.nombre} - ${socio.numeroEnBiblioteca}`);
     setShowSocioResults(false);
     setFormData({ ...formData, socioId: socio.id });
   };
@@ -179,6 +181,7 @@ export default function Prestamos() {
   const filteredSocios = socios.filter(socio =>
     (socio.estado === 'activo' || socio.activo) &&
     (socio.nombre.toLowerCase().includes(socioSearch.toLowerCase()) ||
+      socio.numeroEnBiblioteca.toString().includes(socioSearch) ||
       socio.id.toString().includes(socioSearch))
   );
 
@@ -485,7 +488,7 @@ export default function Prestamos() {
                             onClick={() => selectSocio(socio)}
                           >
                             <User size={16} />
-                            <span>{socio.nombre} - {socio.id}</span>
+                            <span>{socio.nombre} - {socio.numeroEnBiblioteca}</span>
                           </div>
                         ))}
                       </div>

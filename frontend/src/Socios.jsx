@@ -42,16 +42,18 @@ export default function Socios() {
     observaciones: ''
   });
 
-  // Sync with DataContext
+  // Sync with DataContext: numeración de socio por biblioteca (orden de creación)
   useEffect(() => {
     if (sociosRaw && prestamos) {
-      const sociosWithStats = sociosRaw.map(socio => {
+      const sorted = [...sociosRaw].sort((a, b) => a.id - b.id);
+      const sociosWithStats = sorted.map((socio, index) => {
         const socioPrestamos = prestamos.filter(p => p.socioId === socio.id);
         const activos = socioPrestamos.filter(p => p.estado === 'activo' || p.estado === 'vencido').length;
         const totales = socioPrestamos.length;
 
         return {
           ...socio,
+          numeroEnBiblioteca: index + 1,
           prestamosActivos: activos,
           prestamosTotales: totales
         };
@@ -487,7 +489,7 @@ export default function Socios() {
                 {filteredSocios.map(socio => {
                   return (
                     <tr key={socio.id}>
-                      <td className="id-cell">#{socio.id}</td>
+                      <td className="id-cell">#{socio.numeroEnBiblioteca}</td>
                       <td>
                         <div className="socio-info">
                           <div className="socio-avatar">
@@ -581,7 +583,7 @@ export default function Socios() {
           <div className="modal-overlay" onClick={() => setShowDetails(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>Detalles del Socio #{selectedSocio.id}</h3>
+                <h3>Detalles del Socio #{selectedSocio.numeroEnBiblioteca}</h3>
                 <button
                   className="close-button"
                   onClick={() => setShowDetails(false)}
@@ -681,7 +683,7 @@ export default function Socios() {
           <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>Editar Socio #{socioToEdit.id}</h3>
+                <h3>Editar Socio #{socioToEdit.numeroEnBiblioteca}</h3>
                 <button
                   className="close-button"
                   onClick={() => setShowEditModal(false)}

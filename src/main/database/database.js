@@ -127,12 +127,18 @@ class DatabaseService {
                     isbn TEXT UNIQUE,
                     categoria TEXT,
                     editorial TEXT,
+                    lugarPublicacion TEXT,
                     anioPublicacion INTEGER,
+                    edicion TEXT,
                     cantidad INTEGER DEFAULT 1,
                     disponibles INTEGER DEFAULT 1,
+                    paginas TEXT,
+                    clasificacion TEXT,
                     ubicacion TEXT,
                     estado TEXT DEFAULT 'disponible',
                     descripcion TEXT,
+                    cabecera TEXT,
+                    numeroControl TEXT,
                     bibliotecaId INTEGER,
                     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (bibliotecaId) REFERENCES bibliotecas(id) ON DELETE CASCADE
@@ -336,6 +342,22 @@ class DatabaseService {
                     console.log('Tabla préstamos ya tiene la estructura correcta (SET NULL)');
                 }
             }
+
+            // Migrar tabla libros: agregar columnas si no existen (cabecera, numeroControl, lugarPublicacion, edicion, paginas, clasificacion)
+            const librosTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='libros'").get();
+            if (librosTableInfo) {
+                const librosColumns = this.db.prepare("PRAGMA table_info(libros)").all();
+                const colNames = librosColumns.map(c => c.name);
+                const columnsToAdd = [
+                    'cabecera', 'numeroControl', 'lugarPublicacion', 'edicion', 'paginas', 'clasificacion'
+                ];
+                for (const col of columnsToAdd) {
+                    if (!colNames.includes(col)) {
+                        this.db.exec(`ALTER TABLE libros ADD COLUMN ${col} TEXT`);
+                        console.log(`Migración libros: agregada columna ${col}`);
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error al migrar tablas:', error);
             // No lanzar error para no bloquear la aplicación
@@ -498,8 +520,8 @@ class DatabaseService {
             }
             
             const stmt = this.db.prepare(`
-                INSERT INTO libros (titulo, autor, isbn, categoria, editorial, anioPublicacion, cantidad, disponibles, ubicacion, estado, descripcion, bibliotecaId)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO libros (titulo, autor, isbn, categoria, editorial, lugarPublicacion, anioPublicacion, edicion, cantidad, disponibles, paginas, clasificacion, ubicacion, estado, descripcion, cabecera, numeroControl, bibliotecaId)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             //Devuelve un objeto statement, que se guarda en stmt. Luego se ejecuta con los datos del libro  
             //Con el prepare lo que hace es preparar la sentencia SQL para su ejecución posterior con los valores proporcionados.
@@ -509,12 +531,18 @@ class DatabaseService {
                 libroData.isbn || null,
                 libroData.categoria || null,
                 libroData.editorial || null,
+                libroData.lugarPublicacion || null,
                 libroData.anioPublicacion || null,
+                libroData.edicion || null,
                 libroData.cantidad || 1,
                 libroData.disponibles || libroData.cantidad || 1,
+                libroData.paginas || null,
+                libroData.clasificacion || null,
                 libroData.ubicacion || null,
                 libroData.estado || 'disponible',
                 libroData.descripcion || null,
+                libroData.cabecera || null,
+                libroData.numeroControl || null,
                 libroData.bibliotecaId
             );
             

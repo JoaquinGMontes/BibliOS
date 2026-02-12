@@ -41,6 +41,8 @@ export default function Libros() {
     autor: '',
     isbn: '',
     categoria: '',
+    cabecera: '',
+    numeroControl: '',
     editorial: '',
     lugarPublicacion: '',
     anioPublicacion: '',
@@ -76,7 +78,9 @@ export default function Libros() {
           prestamosTotales: prestamosLibro.length,
           ubicacion: libro.ubicacion || '',
           estado: libro.estado || 'disponible',
-          descripcion: libro.descripcion || ''
+          descripcion: libro.descripcion || '',
+          cabecera: libro.cabecera || '',
+          numeroControl: libro.numeroControl || ''
         };
       });
       setLibros(librosFormateados);
@@ -190,6 +194,8 @@ export default function Libros() {
           autor: formData.autor,
           isbn: formData.isbn || null,
           categoria: formData.categoria || null,
+          cabecera: formData.cabecera || null,
+          numeroControl: formData.numeroControl || null,
           editorial: formData.editorial || null,
           lugarPublicacion: formData.lugarPublicacion || null,
           anioPublicacion: formData.anioPublicacion ? parseInt(formData.anioPublicacion) : null,
@@ -225,6 +231,8 @@ export default function Libros() {
         autor: '',
         isbn: '',
         categoria: '',
+        cabecera: '',
+        numeroControl: '',
         editorial: '',
         lugarPublicacion: '',
         anioPublicacion: '',
@@ -285,6 +293,8 @@ export default function Libros() {
       autor: libro.autor,
       isbn: libro.isbn || '',
       categoria: libro.categoria || '',
+      cabecera: libro.cabecera || '',
+      numeroControl: libro.numeroControl || '',
       editorial: libro.editorial || '',
       lugarPublicacion: libro.lugarPublicacion || '',
       anioPublicacion: libro.anioPublicacion || '',
@@ -322,6 +332,8 @@ export default function Libros() {
           autor: editFormData.autor,
           isbn: editFormData.isbn || null,
           categoria: editFormData.categoria || null,
+          cabecera: editFormData.cabecera || null,
+          numeroControl: editFormData.numeroControl || null,
           editorial: editFormData.editorial || null,
           lugarPublicacion: editFormData.lugarPublicacion || null,
           anioPublicacion: editFormData.anioPublicacion ? parseInt(editFormData.anioPublicacion) : null,
@@ -491,6 +503,30 @@ export default function Libros() {
                 </div>
               </div>
 
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="cabecera">Cabecera</label>
+                  <input
+                    type="text"
+                    id="cabecera"
+                    name="cabecera"
+                    value={formData.cabecera}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="numeroControl">Número de control</label>
+                  <input
+                    type="text"
+                    id="numeroControl"
+                    name="numeroControl"
+                    value={formData.numeroControl}
+                    onChange={handleInputChange}
+                    onClick={handleInputClick}
+                  />
+                </div>
+              </div>
 
               <div className="form-row">
                 <div className="form-group">
@@ -859,6 +895,22 @@ export default function Libros() {
                     <span className="label">Categoría:</span>
                     <span className="value">{selectedLibro.categoria || 'No especificada'}</span>
                   </div>
+                  {(selectedLibro.cabecera || selectedLibro.numeroControl) && (
+                    <>
+                      {selectedLibro.cabecera && (
+                        <div className="detail-row">
+                          <span className="label">Cabecera:</span>
+                          <span className="value">{selectedLibro.cabecera}</span>
+                        </div>
+                      )}
+                      {selectedLibro.numeroControl && (
+                        <div className="detail-row">
+                          <span className="label">Número de control:</span>
+                          <span className="value">{selectedLibro.numeroControl}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                   <div className="detail-row">
                     <span className="label">Editorial:</span>
                     <span className="value">{selectedLibro.editorial || 'No especificada'}</span>
@@ -1031,6 +1083,30 @@ export default function Libros() {
                           id="edit-categoria"
                           name="categoria"
                           value={editFormData.categoria}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="edit-cabecera">Cabecera</label>
+                        <input
+                          type="text"
+                          id="edit-cabecera"
+                          name="cabecera"
+                          value={editFormData.cabecera}
+                          onChange={handleEditInputChange}
+                          onClick={handleEditInputClick}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="edit-numeroControl">Número de control</label>
+                        <input
+                          type="text"
+                          id="edit-numeroControl"
+                          name="numeroControl"
+                          value={editFormData.numeroControl}
                           onChange={handleEditInputChange}
                           onClick={handleEditInputClick}
                         />

@@ -9,18 +9,18 @@
 }
 
 .register-container::-webkit-scrollbar-thumb {
-  background: rgba(201, 163, 104, 0.3);
+  background: rgba(19, 64, 116, 0.5);
   border-radius: 3px;
 }
 
 .register-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 163, 104, 0.5);
+  background: rgba(19, 64, 116, 0.7);
 }
 
 /* Para Firefox */
 .register-container {
   scrollbar-width: thin;
-  scrollbar-color: rgba(201, 163, 104, 0.3) transparent;
+  scrollbar-color: rgba(19, 64, 116, 0.5) transparent;
 }
 
 .register-container {
@@ -78,8 +78,8 @@
   top: 0.25rem;
   right: 0.25rem;
   background: transparent;
-  border: 1px solid rgba(201, 163, 104, 0.3);
-  color: #c9a368;
+  border: 1px solid rgba(19, 64, 116, 0.5);
+  color: var(--accent-primary);
   padding: 0.5rem;
   cursor: pointer;
   display: flex;
@@ -93,8 +93,8 @@
 }
 
 .back-button:hover {
-  background: rgba(201, 163, 104, 0.2);
-  border-color: #c9a368;
+  background: rgba(19, 64, 116, 0.2);
+  border-color: var(--accent-primary);
   transform: scale(1.05);
 }
 
@@ -110,7 +110,7 @@
 }
 
 .header-separator {
-  color: #c9a368;
+  color: var(--accent-primary);
   font-size: 2rem;
   font-weight: 300;
   margin: 0 0.5rem;
@@ -123,11 +123,11 @@
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
   margin: 0;
-  color: #c9a368;
+  color: var(--accent-primary);
   white-space: nowrap;
   display: inline-block !important;
   flex-shrink: 1;
-  text-shadow: 0 0 20px rgba(201, 163, 104, 0.3);
+  text-shadow: 0 0 20px rgba(19, 64, 116, 0.35);
   min-width: 0;
 }
 
@@ -152,7 +152,7 @@
 /* Form Section */
 .register-form-section {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-  border: 1px solid rgba(201, 163, 104, 0.15);
+  border: 1px solid rgba(19, 64, 116, 0.3);
   border-radius: 16px;
   padding: 2.5rem 2.5rem 3.5rem 2.5rem;
   backdrop-filter: blur(10px);
@@ -171,19 +171,19 @@
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, transparent, #c9a368, transparent);
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  opacity: 0.6;
 }
 
 .register-form-section h2 {
   font-size: 2rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: #c9a368;
+  color: var(--accent-primary);
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  text-shadow: 0 0 15px rgba(201, 163, 104, 0.3);
+  text-shadow: 0 0 15px rgba(19, 64, 116, 0.3);
 }
 
 .register-form {
@@ -225,7 +225,7 @@
 }
 
 .form-group label svg {
-  color: #c9a368;
+  color: var(--accent-primary);
 }
 
 .form-group input,
@@ -247,15 +247,15 @@
 .form-group input:hover,
 .form-group textarea:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(201, 163, 104, 0.4);
+  border-color: rgba(19, 64, 116, 0.5);
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #c9a368;
-  background: rgba(201, 163, 104, 0.05);
-  box-shadow: 0 0 0 3px rgba(201, 163, 104, 0.15);
+  border-color: var(--accent-primary);
+  background: rgba(19, 64, 116, 0.08);
+  box-shadow: 0 0 0 3px rgba(19, 64, 116, 0.2);
   color: #ffffff !important;
   opacity: 1;
 }
@@ -296,7 +296,7 @@
   right: 1rem;
   background: none;
   border: none;
-  color: #c9a368;
+  color: var(--accent-primary);
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 6px;
@@ -307,8 +307,8 @@
 }
 
 .password-toggle:hover {
-  background: rgba(201, 163, 104, 0.1);
-  color: #d4af37;
+  background: rgba(19, 64, 116, 0.15);
+  color: var(--accent-secondary);
 }
 
 .password-toggle:active {
@@ -324,8 +324,8 @@
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #c9a368 0%, #e6c27d 100%);
-  color: #1f2937;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  color: #EEF4ED;
   border: none;
   padding: 1.25rem 2.5rem;
   border-radius: 10px;
@@ -346,7 +346,7 @@
 
 .submit-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(201, 163, 104, 0.3);
+  box-shadow: 0 8px 25px rgba(19, 64, 116, 0.4);
 }
 
 .submit-button:disabled {
@@ -393,12 +393,12 @@
 
 .library-card:hover {
   background: transparent;
-  border-color: rgba(201, 163, 104, 0.3);
+  border-color: rgba(19, 64, 116, 0.4);
 }
 
 .library-card.active {
-  border-color: #c9a368;
-  background: rgba(201, 163, 104, 0.1);
+  border-color: var(--accent-primary);
+  background: rgba(19, 64, 116, 0.15);
 }
 
 .library-info h3 {
@@ -421,7 +421,7 @@
 
 .library-address svg,
 .library-responsible svg {
-  color: #c9a368;
+  color: var(--accent-primary);
 }
 
 .library-actions {
