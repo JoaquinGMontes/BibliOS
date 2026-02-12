@@ -142,7 +142,6 @@ export default function Libros() {
           autor: libroEncontrado.autor || prev.autor,
           isbn: libroEncontrado.isbn || prev.isbn,
           categoria: libroEncontrado.categoria || prev.categoria,
-          categoria: libroEncontrado.categoria || prev.categoria,
           editorial: libroEncontrado.editorial || prev.editorial,
           lugarPublicacion: libroEncontrado.publish_places?.[0] || prev.lugarPublicacion,
           anioPublicacion: libroEncontrado.anioPublicacion || prev.anioPublicacion,
