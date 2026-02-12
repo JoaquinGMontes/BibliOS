@@ -660,7 +660,7 @@ export default function Prestamos() {
                       <td>
                         <div className="user-info">
                           <User size={14} />
-                          <span>{socio?.nombre}</span>
+                          <span>{socio?.numeroEnBiblioteca} - {socio?.nombre}</span>
                         </div>
                       </td>
                       <td>
@@ -742,7 +742,7 @@ export default function Prestamos() {
                 </div>
                 <div className="detail-row">
                   <span className="label">Socio:</span>
-                  <span className="value">{getSocioById(selectedPrestamo.socioId)?.nombre}</span>
+                  <span className="value">{getSocioById(selectedPrestamo.socioId)?.numeroEnBiblioteca} - {getSocioById(selectedPrestamo.socioId)?.nombre}</span>
                 </div>
                 <div className="detail-row">
                   <span className="label">Fecha de Préstamo:</span>
