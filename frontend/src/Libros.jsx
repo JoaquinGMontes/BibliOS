@@ -265,7 +265,6 @@ export default function Libros() {
   };
 
   const handleEliminar = (libroId) => {
-    console.log('handleEliminar called for libroId:', libroId);
     setLibroToDelete(libroId);
     setShowDeleteConfirm(true);
   };
@@ -299,7 +298,6 @@ export default function Libros() {
 
   // Funciones de edición
   const handleEditClick = (libro) => {
-    console.log('handleEditClick called for libro:', libro);
     setLibroToEdit(libro);
     setEditFormData({
       titulo: libro.titulo,
@@ -867,7 +865,6 @@ export default function Libros() {
                           <button
                             className="action-btn edit"
                             onClick={() => {
-                              console.log('Clicking Edit for:', libro);
                               handleEditClick(libro);
                             }}
                             title="Editar libro"
@@ -877,7 +874,6 @@ export default function Libros() {
                           <button
                             className="action-btn delete"
                             onClick={() => {
-                              console.log('Clicking Delete for:', libro.id);
                               handleEliminar(libro.id);
                             }}
                             title="Eliminar libro"
