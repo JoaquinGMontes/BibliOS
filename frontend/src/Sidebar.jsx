@@ -1,8 +1,10 @@
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LogOut, Sun, Moon, LayoutDashboard, Repeat, Users, Book
+  LogOut, Sun, Moon, LayoutDashboard, Repeat, Users, Book, Building
 } from 'lucide-react';
 import './sidebar.css';
+import LibraryProfileModal from './components/LibraryProfileModal';
 import { useAuth } from './hooks/useAuth.js';
 import { useTheme } from './hooks/useTheme.js';
 
@@ -11,6 +13,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [showLibraryModal, setShowLibraryModal] = React.useState(false);
 
   const handleLogout = async () => {
     try {
@@ -82,6 +85,15 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="sidebar-footer">
           <button
+            onClick={() => setShowLibraryModal(true)}
+            className="footer-btn library-profile-btn"
+            title="Ver Biblioteca"
+          >
+            <Building size={20} />
+            Ver Biblioteca
+          </button>
+
+          <button
             onClick={toggleTheme}
             className="footer-btn theme-toggle-btn"
             title="Cambiar tema"
@@ -100,6 +112,11 @@ export default function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
       </aside>
+
+      <LibraryProfileModal
+        isOpen={showLibraryModal}
+        onClose={() => setShowLibraryModal(false)}
+      />
     </>
   );
 }

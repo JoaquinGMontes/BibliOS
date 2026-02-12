@@ -823,6 +823,34 @@ class DatabaseService {
         }
     }
 
+    async updateBiblioteca(id, updates) {
+        try {
+            const fields = [];
+            const values = [];
+
+            // Campos permitidos para actualización
+            const allowedFields = ['nombre', 'direccion', 'telefono', 'email', 'responsable', 'horarios', 'descripcion'];
+
+            Object.keys(updates).forEach(key => {
+                if (allowedFields.includes(key) && updates[key] !== undefined) {
+                    fields.push(`${key} = ?`);
+                    values.push(updates[key]);
+                }
+            });
+
+            if (fields.length === 0) return false;
+
+            values.push(id);
+            const stmt = this.db.prepare(`UPDATE bibliotecas SET ${fields.join(', ')} WHERE id = ?`);
+            const result = stmt.run(...values);
+
+            return result.changes > 0;
+        } catch (error) {
+            console.error('Error al actualizar biblioteca:', error);
+            throw error;
+        }
+    }
+
     async deleteBiblioteca(id) {
         try {
             const stmt = this.db.prepare('DELETE FROM bibliotecas WHERE id = ?');
