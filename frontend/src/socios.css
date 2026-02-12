@@ -544,6 +544,20 @@ button:hover {
   color: white;
 }
 
+.action-btn.delete {
+  color: #ef4444;
+}
+
+.action-btn.loans {
+  color: #a855f7;
+}
+
+.action-btn.loans:hover {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: white;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Plus, Search, Filter, BookOpen, User, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Trash2,
@@ -9,6 +10,16 @@ import Sidebar from './Sidebar.jsx';
 import { useData } from './context/DataContext.jsx';
 
 export default function Prestamos() {
+  const location = useLocation();
+
+  // Efecto para manejar búsqueda inicial desde navegación (ej: desde Socios)
+  useEffect(() => {
+    if (location.state?.initialSearch) {
+      setSearchTerm(location.state.initialSearch);
+      // Limpiar el state para evitar que persista si el usuario navega y vuelve
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
   // Context Data
   const {
     prestamos: prestamosRaw,
@@ -161,14 +172,14 @@ export default function Prestamos() {
 
   const selectLibro = (libro) => {
     setSelectedLibro(libro);
-    setLibroSearch(`${libro.titulo} - ${libro.autor}`);
+    setLibroSearch(`${libro.titulo} - ${libro.autor} `);
     setShowLibroResults(false);
     setFormData({ ...formData, libroId: libro.id });
   };
 
   const selectSocio = (socio) => {
     setSelectedSocio(socio);
-    setSocioSearch(`${socio.nombre} - ${socio.numeroEnBiblioteca}`);
+    setSocioSearch(`${socio.nombre} - ${socio.numeroEnBiblioteca} `);
     setShowSocioResults(false);
     setFormData({ ...formData, socioId: socio.id });
   };
@@ -453,7 +464,7 @@ export default function Prestamos() {
                         {filteredLibros.map(libro => (
                           <div
                             key={libro.id}
-                            className={`search-result-item ${!libro.disponible ? 'disabled' : ''}`}
+                            className={`search - result - item ${!libro.disponible ? 'disabled' : ''} `}
                             onClick={() => libro.disponible && selectLibro(libro)}
                             style={!libro.disponible ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
@@ -589,25 +600,25 @@ export default function Prestamos() {
             {showFilterDropdown && (
               <div className="dropdown-menu">
                 <div
-                  className={`dropdown-item ${filterStatus === 'todos' ? 'active' : ''}`}
+                  className={`dropdown - item ${filterStatus === 'todos' ? 'active' : ''} `}
                   onClick={() => { setFilterStatus('todos'); setShowFilterDropdown(false); }}
                 >
                   Todos los estados
                 </div>
                 <div
-                  className={`dropdown-item ${filterStatus === 'activo' ? 'active' : ''}`}
+                  className={`dropdown - item ${filterStatus === 'activo' ? 'active' : ''} `}
                   onClick={() => { setFilterStatus('activo'); setShowFilterDropdown(false); }}
                 >
                   Activos
                 </div>
                 <div
-                  className={`dropdown-item ${filterStatus === 'vencido' ? 'active' : ''}`}
+                  className={`dropdown - item ${filterStatus === 'vencido' ? 'active' : ''} `}
                   onClick={() => { setFilterStatus('vencido'); setShowFilterDropdown(false); }}
                 >
                   Vencidos
                 </div>
                 <div
-                  className={`dropdown-item ${filterStatus === 'completado' ? 'active' : ''}`}
+                  className={`dropdown - item ${filterStatus === 'completado' ? 'active' : ''} `}
                   onClick={() => { setFilterStatus('completado'); setShowFilterDropdown(false); }}
                 >
                   Completados

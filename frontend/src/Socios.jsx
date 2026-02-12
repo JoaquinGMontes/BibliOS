@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, User, Mail, Phone, Calendar,
   CheckCircle, AlertTriangle, Clock, Eye, Edit, Trash2,
@@ -9,6 +10,7 @@ import Sidebar from './Sidebar.jsx';
 import { useData } from './context/DataContext.jsx';
 
 export default function Socios() {
+  const navigate = useNavigate();
   // Context Data
   const {
     socios: sociosRaw,
@@ -545,6 +547,15 @@ export default function Socios() {
                       </td>
                       <td>
                         <div className="actions">
+                          <button
+                            className="action-btn loans"
+                            onClick={() => {
+                              navigate('/prestamos', { state: { initialSearch: socio.nombre } });
+                            }}
+                            title="Ver Préstamos"
+                          >
+                            <FileText size={14} />
+                          </button>
                           <button
                             className="action-btn view"
                             onClick={() => {
