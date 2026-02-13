@@ -1,4 +1,3 @@
-
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;
@@ -42,7 +41,7 @@
 }
 
 /* Modal Content Layout */
-.modal-content {
+.modal-alert-content {
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -60,7 +59,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+  /* Prevent overlap with close button by ensuring margin or z-index if needed */
+  margin-top: 10px;
 }
 
 /* Typography */
@@ -111,7 +112,7 @@
 
 .modal-btn.confirm {
   color: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .modal-btn.confirm.error {

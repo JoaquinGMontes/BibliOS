@@ -10,6 +10,8 @@ import './socios.css';
 import Sidebar from './Sidebar.jsx';
 import { useData } from './context/DataContext.jsx';
 
+import Modal from './components/Modal';
+
 export default function Socios() {
   const navigate = useNavigate();
   // Context Data
@@ -34,6 +36,29 @@ export default function Socios() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [socioToEdit, setSocioToEdit] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+
+  // Modal de alertas personalizadas
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = null) => {
+    setAlertModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onConfirm
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertModal(prev => ({ ...prev, isOpen: false }));
+  };
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -104,14 +129,46 @@ export default function Socios() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validaciones
+    if (!formData.nombre.trim()) {
+      showAlert('Campo imcompleto', 'Completar campo de nombre', 'error');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      showAlert('Campo incompleto', 'Completar campo de mail', 'error');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      showAlert('Formato inválido', 'Formato de mail incorrecto', 'error');
+      return;
+    }
+
+    if (formData.telefono) {
+      // Remover espacios y guiones para validar solo dígitos si se desea, 
+      // o validar la longitud directa. El requerimiento dice "debe tener 10 digitos".
+      // Asumimos 10 dígitos numéricos.
+      const phoneDigits = formData.telefono.replace(/\D/g, '');
+      if (phoneDigits.length !== 10) {
+        showAlert('Teléfono inválido', 'El número de telefono del socio debe tener 10 digitos', 'error');
+        return;
+      }
+
+      // Validar teléfono duplicado
+      const phoneExists = socios.some(s => s.telefono === formData.telefono);
+      if (phoneExists) {
+        showAlert('Teléfono en uso', 'El número de teléfono ya le corresponde a un socio ya creado', 'error');
+        return;
+      }
+    }
+
     try {
       // Obtener biblioteca activa
       const storedLibrary = localStorage.getItem('bibliotecaActiva');
       if (!storedLibrary) {
-        await window.nativeDialog.error({
-          message: 'No hay biblioteca activa',
-          detail: 'Por favor, selecciona una biblioteca primero.'
-        });
+        showAlert('Error', 'No hay biblioteca activa. Por favor, selecciona una biblioteca primero.', 'error');
         return;
       }
 
@@ -215,6 +272,30 @@ export default function Socios() {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
 
+    // Validaciones Edición
+    if (editFormData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editFormData.email)) {
+        showAlert('Error al editar', 'Formato de mail incorrecto', 'error');
+        return;
+      }
+    }
+
+    if (editFormData.telefono) {
+      const phoneDigits = editFormData.telefono.replace(/\D/g, '');
+      if (phoneDigits.length !== 10) {
+        showAlert('Teléfono inválido', 'El número de telefono del socio debe tener 10 digitos', 'error');
+        return;
+      }
+
+      // Validar teléfono duplicado (excluyendo el socio actual)
+      const phoneExists = socios.some(s => s.telefono === editFormData.telefono && s.id !== socioToEdit.id);
+      if (phoneExists) {
+        showAlert('Teléfono en uso', 'El número de teléfono ya le corresponde a un socio ya creado', 'error');
+        return;
+      }
+    }
+
     try {
       if (window.electronAPI && socioToEdit) {
         await window.electronAPI.updateSocio(socioToEdit.id, {
@@ -268,6 +349,15 @@ export default function Socios() {
 
   return (
     <>
+      <Modal
+        isOpen={alertModal.isOpen}
+        onClose={closeAlert}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+      />
+
       <button
         className="mobile-menu-toggle"
         onClick={() => setIsSidebarOpen(true)}
@@ -338,7 +428,7 @@ export default function Socios() {
         {showForm && (
           <div className="form-section">
             <h3>Nuevo Socio</h3>
-            <form onSubmit={handleSubmit} className="socio-form">
+            <form onSubmit={handleSubmit} className="socio-form" noValidate>
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="nombre">Nombre Completo <span style={{ color: "#ef4444" }}>*</span></label>

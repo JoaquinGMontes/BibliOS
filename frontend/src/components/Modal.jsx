@@ -60,7 +60,7 @@ export default function Modal({
     return (
         <div className={`modal-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}>
             <div className={`modal-container ${isOpen ? 'open' : ''}`} onClick={e => e.stopPropagation()}>
-                <div className="modal-content">
+                <div className="modal-alert-content">
                     <div className="modal-icon-wrapper">
                         {getIcon()}
                     </div>

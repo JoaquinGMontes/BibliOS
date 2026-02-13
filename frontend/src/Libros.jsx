@@ -11,6 +11,8 @@ import Sidebar from './Sidebar.jsx';
 import { buscarLibroPorTitulo, buscarLibroPorISBN } from './utils/openLibraryAPI.js';
 import { useData } from './context/DataContext.jsx';
 
+import Modal from './components/Modal';
+
 export default function Libros() {
   // Context Data
   const {
@@ -35,6 +37,29 @@ export default function Libros() {
   const [libroToEdit, setLibroToEdit] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [isSearching, setIsSearching] = useState(false);
+
+  // Modal de alertas personalizadas
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = null) => {
+    setAlertModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onConfirm
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertModal(prev => ({ ...prev, isOpen: false }));
+  };
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -185,14 +210,24 @@ export default function Libros() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validaciones
+    if (formData.isbn) {
+      // Eliminar guiones si los hubiera para contar longitud real, si se desea
+      // pero el requerimiento dice "ISBN tiene que tener 10 o 13 digitos".
+      // Asumiremos longitud de string exacta o limpia.
+      // Comúnmente ISBN puede tener guiones. Vamos a limpiar guiones para contar dígitos.
+      const isbnDigits = formData.isbn.replace(/-/g, '');
+      if (isbnDigits.length !== 10 && isbnDigits.length !== 13) {
+        showAlert('ISBN inválido', 'ISBN tiene que tener 10 o 13 digitos', 'error');
+        return;
+      }
+    }
+
     try {
       // Obtener biblioteca activa
       const storedLibrary = localStorage.getItem('bibliotecaActiva');
       if (!storedLibrary) {
-        await window.nativeDialog.error({
-          message: 'No hay biblioteca activa',
-          detail: 'Por favor, selecciona una biblioteca primero.'
-        });
+        showAlert('Error', 'No hay biblioteca activa. Por favor, selecciona una biblioteca primero.', 'error');
         return;
       }
 
@@ -347,6 +382,14 @@ export default function Libros() {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
 
+    if (editFormData.isbn) {
+      const isbnDigits = editFormData.isbn.replace(/-/g, '');
+      if (isbnDigits.length !== 10 && isbnDigits.length !== 13) {
+        showAlert('ISBN inválido', 'ISBN tiene que tener 10 o 13 digitos', 'error');
+        return;
+      }
+    }
+
     try {
       if (window.electronAPI && libroToEdit) {
         await window.electronAPI.updateLibro(libroToEdit.id, {
@@ -405,6 +448,15 @@ export default function Libros() {
 
   return (
     <>
+      <Modal
+        isOpen={alertModal.isOpen}
+        onClose={closeAlert}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+      />
+
       <button
         className="mobile-menu-toggle"
         onClick={() => setIsSidebarOpen(true)}
@@ -475,7 +527,7 @@ export default function Libros() {
         {showForm && (
           <div className="form-section">
             <h3>Nuevo Libro</h3>
-            <form onSubmit={handleSubmit} className="libro-form">
+            <form onSubmit={handleSubmit} className="libro-form" noValidate>
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="titulo">Título <span style={{ color: "#ef4444" }}>*</span></label>
