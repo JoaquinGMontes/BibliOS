@@ -474,7 +474,7 @@ export default function Prestamos() {
                         {filteredLibros.map(libro => (
                           <div
                             key={libro.id}
-                            className={`search - result - item ${!libro.disponible ? 'disabled' : ''} `}
+                            className={`search-result-item ${!libro.disponible ? 'disabled' : ''} `}
                             onClick={() => libro.disponible && selectLibro(libro)}
                             style={!libro.disponible ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
