@@ -16,6 +16,12 @@ export default function Prestamos() {
   useEffect(() => {
     if (location.state?.initialSearch) {
       setSearchTerm(location.state.initialSearch);
+
+      // Si recibimos un ID específico, lo guardamos para filtrado estricto
+      if (location.state.exactSocioId) {
+        setExactSocioId(location.state.exactSocioId);
+      }
+
       // Limpiar el state para evitar que persista si el usuario navega y vuelve
       window.history.replaceState({}, document.title);
     }
@@ -86,6 +92,7 @@ export default function Prestamos() {
   }, [sociosRaw]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [exactSocioId, setExactSocioId] = useState(null); // Nuevo estado para filtrado exacto
   const [filterStatus, setFilterStatus] = useState('todos');
   const [selectedPrestamo, setSelectedPrestamo] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -360,9 +367,12 @@ export default function Prestamos() {
       libro?.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       socio?.nombre.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Si tenemos un exactSocioId, verificar que coincida
+    const matchesExactSocio = exactSocioId ? socio?.id === exactSocioId : true;
+
     const matchesFilter = filterStatus === 'todos' || prestamo.estado === filterStatus;
 
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesExactSocio && matchesFilter;
   });
 
   // Estadísticas
@@ -581,7 +591,11 @@ export default function Prestamos() {
               type="text"
               placeholder="Buscar por libro o socio..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                // Si el usuario escribe manual, limpiamos el filtro estricto por ID
+                if (exactSocioId) setExactSocioId(null);
+              }}
             />
           </div>
           <div className="filter-box custom-dropdown">

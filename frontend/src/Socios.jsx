@@ -553,7 +553,12 @@ export default function Socios() {
                           <button
                             className="action-btn loans"
                             onClick={() => {
-                              navigate('/prestamos', { state: { initialSearch: socio.nombre } });
+                              navigate('/prestamos', {
+                                state: {
+                                  initialSearch: socio.nombre,
+                                  exactSocioId: socio.id
+                                }
+                              });
                             }}
                             title="Ver Préstamos"
                           >
