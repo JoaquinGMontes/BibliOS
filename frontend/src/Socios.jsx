@@ -104,6 +104,12 @@ export default function Socios() {
     }
   };
 
+  const cleanErrorMessage = (msg) => {
+    if (!msg) return 'Error desconocido';
+    // Remove "Error invoking remote method '...': Error: "
+    return msg.replace(/Error invoking remote method '[^']+': Error: /, '');
+  };
+
   const getEstadoIcon = (estado) => {
     switch (estado) {
       case 'activo': return <CheckCircle size={14} />;
@@ -203,10 +209,7 @@ export default function Socios() {
       setShowForm(false);
     } catch (error) {
       console.error('Error al crear socio:', error);
-      await window.nativeDialog.error({
-        message: 'Error al crear socio',
-        detail: error.message
-      });
+      showAlert('Error al crear socio', cleanErrorMessage(error.message), 'error');
     }
   };
 
@@ -228,10 +231,7 @@ export default function Socios() {
         setSocioToDelete(null);
       } catch (error) {
         console.error('Error al eliminar socio:', error);
-        await window.nativeDialog.error({
-          message: 'Error al eliminar socio',
-          detail: error.message
-        });
+        showAlert('Error al eliminar socio', cleanErrorMessage(error.message), 'error');
       }
     }
     setShowDeleteConfirm(false);
@@ -315,10 +315,7 @@ export default function Socios() {
       setEditFormData({});
     } catch (error) {
       console.error('Error al actualizar socio:', error);
-      await window.nativeDialog.error({
-        message: 'Error al actualizar socio',
-        detail: error.message
-      });
+      showAlert('Error al actualizar socio', cleanErrorMessage(error.message), 'error');
     }
   };
 
